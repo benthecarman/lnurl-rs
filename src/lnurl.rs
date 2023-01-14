@@ -46,13 +46,15 @@ impl FromStr for LnUrl {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn encode_test() {
         let url = "https://service.com/api?q=3fc3645b439ce8e7f2553a69e5267081d96dcd340693afabe04be7b0ccd178df";
         let expected =
             "LNURL1DP68GURN8GHJ7UM9WFMXJCM99E3K7MF0V9CXJ0M385EKVCENXC6R2C35XVUKXEFCV5MKVV34X5EKZD3EV56NYD3HXQURZEPEXEJXXEPNXSCRVWFNV9NXZCN9XQ6XYEFHVGCXXCMYXYMNSERXFQ5FNS";
 
-        let lnurl = super::LnUrl::from_url(url.to_string()).unwrap();
+        let lnurl = LnUrl::from_url(url.to_string()).unwrap();
         assert_eq!(lnurl.to_string().to_uppercase(), expected);
     }
 
@@ -62,7 +64,7 @@ mod tests {
             "LNURL1DP68GURN8GHJ7UM9WFMXJCM99E3K7MF0V9CXJ0M385EKVCENXC6R2C35XVUKXEFCV5MKVV34X5EKZD3EV56NYD3HXQURZEPEXEJXXEPNXSCRVWFNV9NXZCN9XQ6XYEFHVGCXXCMYXYMNSERXFQ5FNS";
         let expected = "https://service.com/api?q=3fc3645b439ce8e7f2553a69e5267081d96dcd340693afabe04be7b0ccd178df";
 
-        let lnurl = super::LnUrl::decode(str.to_string()).unwrap();
+        let lnurl = LnUrl::decode(str.to_string()).unwrap();
         assert_eq!(lnurl.url, expected);
     }
 }
