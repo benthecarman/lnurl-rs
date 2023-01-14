@@ -1,4 +1,5 @@
 //! LNURL by way of `reqwest` HTTP client.
+#![allow(clippy::result_large_err)]
 
 use reqwest::Client;
 

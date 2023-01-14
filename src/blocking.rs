@@ -1,4 +1,5 @@
 //! LNURL by way of `ureq` HTTP client.
+#![allow(clippy::result_large_err)]
 
 use std::time::Duration;
 
