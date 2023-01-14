@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 pub mod api;
 
 #[cfg(any(feature = "async", feature = "async-https"))]
@@ -116,6 +118,7 @@ impl_error!(bitcoin::hashes::hex::Error, Hex, Error);
 
 #[cfg(test)]
 mod tests {
+    #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     use super::*;
 
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
