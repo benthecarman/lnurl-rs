@@ -7,6 +7,6 @@ A rust implementation of [LNURL](https://github.com/lnurl/luds).
 ## Progress
 
 - [x] lnurl-pay
-- [ ] lnurl-withdraw
+- [x] lnurl-withdraw
 - [ ] lnurl-auth
 - [ ] lnurl-channel

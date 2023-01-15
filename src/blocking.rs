@@ -5,7 +5,10 @@ use std::time::Duration;
 
 use ureq::{Agent, Proxy};
 
-use crate::{decode_ln_url_response_from_json, Builder, Error, LnURLPayInvoice, LnURLResponse};
+use crate::{
+    decode_ln_url_response_from_json, Builder, Error, LnURLPayInvoice, LnUrlResponse, PayResponse,
+    Response, WithdrawalResponse,
+};
 
 #[derive(Debug, Clone)]
 pub struct BlockingClient {
@@ -33,7 +36,7 @@ impl BlockingClient {
         BlockingClient { agent }
     }
 
-    pub fn make_request(&self, url: &str) -> Result<Box<dyn LnURLResponse>, Error> {
+    pub fn make_request(&self, url: &str) -> Result<LnUrlResponse, Error> {
         let resp = self.agent.get(url).call();
 
         match resp {
@@ -46,13 +49,38 @@ impl BlockingClient {
         }
     }
 
-    pub fn get_invoice(&self, callback: &str, msats: u64) -> Result<LnURLPayInvoice, Error> {
-        let symbol = if callback.contains('?') { "&" } else { "?" };
+    pub fn get_invoice(&self, pay: &PayResponse, msats: u64) -> Result<LnURLPayInvoice, Error> {
+        let symbol = if pay.callback.contains('?') { "&" } else { "?" };
 
         let resp = self
             .agent
-            .get(&format!("{}{}amount={}", callback, symbol, msats))
+            .get(&format!("{}{}amount={}", pay.callback, symbol, msats))
             .call();
+
+        match resp {
+            Ok(resp) => Ok(resp.into_json()?),
+            Err(ureq::Error::Status(code, _)) => Err(Error::HttpResponse(code)),
+            Err(e) => Err(Error::Ureq(e)),
+        }
+    }
+
+    pub fn do_withdrawal(
+        &self,
+        withdrawal: &WithdrawalResponse,
+        invoice: &str,
+    ) -> Result<Response, Error> {
+        let symbol = if withdrawal.callback.contains('?') {
+            "&"
+        } else {
+            "?"
+        };
+
+        let url = format!(
+            "{}{}k1={}&pr={}",
+            withdrawal.callback, symbol, withdrawal.k1, invoice
+        );
+
+        let resp = self.agent.get(&url).call();
 
         match resp {
             Ok(resp) => Ok(resp.into_json()?),
