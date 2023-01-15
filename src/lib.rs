@@ -116,10 +116,13 @@ impl_error!(io::Error, Io, Error);
 impl_error!(std::num::ParseIntError, Parsing, Error);
 impl_error!(bitcoin::hashes::hex::Error, Hex, Error);
 
+#[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
 #[cfg(test)]
 mod tests {
-    #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
-    use super::*;
+    use crate::lnurl::LnUrl;
+    use crate::LnUrlResponse::{LnUrlPayResponse, LnUrlWithdrawResponse};
+    use crate::{AsyncClient, BlockingClient, Builder, Response};
+    use std::str::FromStr;
 
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     async fn setup_clients() -> (BlockingClient, AsyncClient) {
@@ -131,37 +134,56 @@ mod tests {
 
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     #[tokio::test]
-    async fn test_lnurl_pay() {
-        let url = "https://opreturnbot.com/.well-known/lnurlp/ben";
-        let (blocking_client, async_client) = setup_clients().await;
-
-        let res = blocking_client.make_request(url).unwrap();
-        let res_async = async_client.make_request(url).await.unwrap();
-        assert_eq!(res.tag(), Tag::PayRequest);
-        assert_eq!(res_async.tag(), Tag::PayRequest);
-    }
-
-    #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
-    #[tokio::test]
     async fn test_get_invoice() {
         let url = "https://opreturnbot.com/.well-known/lnurlp/ben";
         let (blocking_client, async_client) = setup_clients().await;
 
         let res = blocking_client.make_request(url).unwrap();
         let res_async = async_client.make_request(url).await.unwrap();
-        assert_eq!(res.tag(), Tag::PayRequest);
-        assert_eq!(res_async.tag(), Tag::PayRequest);
 
-        let msats = 1_000_000;
-        let invoice = blocking_client
-            .get_invoice(res.callback().as_str(), msats)
-            .unwrap();
-        let invoice_async = async_client
-            .get_invoice(res.callback().as_str(), msats)
-            .await
-            .unwrap();
+        // check res_async
+        match res_async {
+            LnUrlPayResponse(_) => {}
+            _ => panic!("Wrong response type"),
+        }
 
-        assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
-        assert_eq!(invoice_async.invoice().amount_milli_satoshis(), Some(msats));
+        if let LnUrlPayResponse(pay) = res {
+            let msats = 1_000_000;
+            let invoice = blocking_client.get_invoice(&pay, msats).unwrap();
+            let invoice_async = async_client.get_invoice(&pay, msats).await.unwrap();
+
+            assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
+            assert_eq!(invoice_async.invoice().amount_milli_satoshis(), Some(msats));
+        } else {
+            panic!("Wrong response type");
+        }
+    }
+
+    #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
+    #[tokio::test]
+    async fn test_do_withdrawal() {
+        let lnurl = LnUrl::from_str("LNURL1DP68GURN8GHJ7MRWW4EXCTNXD9SHG6NPVCHXXMMD9AKXUATJDSKHW6T5DPJ8YCTH8AEK2UMND9HKU0FJVSCNZDPHVYENVDTPVYCRSVMPXVMRSCEEXGERQVPSXV6X2C3KX9JXZVMZ8PNXZDR9VY6N2DRZVG6RWEPCVYMRZDMRV9SK2D3KV43XVCF58DT").unwrap();
+        let url = lnurl.url.as_str();
+        let (blocking_client, async_client) = setup_clients().await;
+
+        let res = blocking_client.make_request(url).unwrap();
+        let res_async = async_client.make_request(url).await.unwrap();
+
+        // check res_async
+        match res_async {
+            LnUrlWithdrawResponse(_) => {}
+            _ => panic!("Wrong response type"),
+        }
+
+        if let LnUrlWithdrawResponse(w) = res {
+            let invoice = "lnbc1302470n1p3x3ssapp5axqf6dsusf98895vdhw97rn0szk4z6cxa5hfw3s2q5ksn3575qssdzz2pskjepqw3hjqnmsv4h9xct5wvszsnmjv3jhygzfgsazqem9dejhyctvtan82mny9ycqzpgxqzuysp5q97feeev2tnjsc0qn9kezqlgs8eekwfkxsc28uwxp9elnzkj2n0s9qyyssq02hkrz7dr0adx09t6w2tr9k8nczvq094r7qx297tsdupgeg5t3m8hvmkl7mqhtvx94he3swlg2qzhqk2j39wehcmv9awc06gex82e8qq0u0pm6";
+            let response = blocking_client.do_withdrawal(&w, invoice).unwrap();
+            let response_async = async_client.do_withdrawal(&w, invoice).await.unwrap();
+
+            assert_eq!(response, Response::Ok { event: None });
+            assert_eq!(response_async, Response::Ok { event: None });
+        } else {
+            panic!("Wrong response type");
+        }
     }
 }

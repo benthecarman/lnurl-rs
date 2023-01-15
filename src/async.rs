@@ -34,21 +34,45 @@ impl AsyncClient {
         AsyncClient { client }
     }
 
-    pub async fn make_request(&self, url: &str) -> Result<Box<dyn LnURLResponse>, Error> {
+    pub async fn make_request(&self, url: &str) -> Result<LnUrlResponse, Error> {
         let resp = self.client.get(url).send().await?;
 
         let txt = resp.error_for_status()?.text().await?;
         Ok(decode_ln_url_response(&txt))
     }
 
-    pub async fn get_invoice(&self, callback: &str, msats: u64) -> Result<LnURLPayInvoice, Error> {
-        let symbol = if callback.contains('?') { "&" } else { "?" };
+    pub async fn get_invoice(
+        &self,
+        pay: &PayResponse,
+        msats: u64,
+    ) -> Result<LnURLPayInvoice, Error> {
+        let symbol = if pay.callback.contains('?') { "&" } else { "?" };
 
         let resp = self
             .client
-            .get(&format!("{}{}amount={}", callback, symbol, msats))
+            .get(&format!("{}{}amount={}", pay.callback, symbol, msats))
             .send()
             .await?;
+
+        Ok(resp.error_for_status()?.json().await?)
+    }
+
+    pub async fn do_withdrawal(
+        &self,
+        withdrawal: &WithdrawalResponse,
+        invoice: &str,
+    ) -> Result<Response, Error> {
+        let symbol = if withdrawal.callback.contains('?') {
+            "&"
+        } else {
+            "?"
+        };
+
+        let url = format!(
+            "{}{}k1={}&pr={}",
+            withdrawal.callback, symbol, withdrawal.k1, invoice
+        );
+        let resp = self.client.get(url).send().await?;
 
         Ok(resp.error_for_status()?.json().await?)
     }

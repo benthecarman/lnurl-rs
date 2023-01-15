@@ -5,27 +5,30 @@ use serde::de::Error;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-pub trait LnURLResponse {
-    fn tag(&self) -> Tag;
-    fn callback(&self) -> String;
-}
-
-pub fn decode_ln_url_response(string: &str) -> Box<dyn LnURLResponse> {
+pub fn decode_ln_url_response(string: &str) -> LnUrlResponse {
     let json: serde_json::Value = serde_json::from_str(string).unwrap();
     decode_ln_url_response_from_json(json)
 }
 
-pub fn decode_ln_url_response_from_json(json: serde_json::Value) -> Box<dyn LnURLResponse> {
+pub fn decode_ln_url_response_from_json(json: serde_json::Value) -> LnUrlResponse {
     let obj = json.as_object().unwrap();
     let tag_str = obj.get("tag").unwrap().as_str().unwrap();
     let tag = Tag::from_str(tag_str).unwrap();
     match tag {
         Tag::PayRequest => {
             let pay_response: PayResponse = serde_json::from_value(json).unwrap();
-            Box::new(pay_response)
+            LnUrlResponse::LnUrlPayResponse(pay_response)
         }
-        Tag::WithdrawRequest => panic!("Not implemented"),
+        Tag::WithdrawRequest => {
+            let resp: WithdrawalResponse = serde_json::from_value(json).unwrap();
+            LnUrlResponse::LnUrlWithdrawResponse(resp)
+        }
     }
+}
+
+pub enum LnUrlResponse {
+    LnUrlPayResponse(PayResponse),
+    LnUrlWithdrawResponse(WithdrawalResponse),
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -57,7 +60,7 @@ pub struct PayResponse {
     #[serde(rename = "maxSendable")]
     pub max_sendable: u64,
     /// min sendable amount for a given user on a given service,
-    /// can not be less than 1 or more than `maxSendable`
+    /// can not be less than 1 or more than `max_sendable`
     #[serde(rename = "minSendable")]
     pub min_sendable: u64,
     /// tag of the request
@@ -65,16 +68,6 @@ pub struct PayResponse {
     /// Metadata json which must be presented as raw string here,
     /// this is required to pass signature verification at a later step
     pub metadata: String,
-}
-
-impl LnURLResponse for PayResponse {
-    fn tag(&self) -> Tag {
-        self.tag.clone()
-    }
-
-    fn callback(&self) -> String {
-        self.callback.clone()
-    }
 }
 
 impl PayResponse {
@@ -113,19 +106,70 @@ pub struct WithdrawalResponse {
     #[serde(rename = "maxWithdrawable")]
     pub max_withdrawable: u64,
     /// An optional field, defaults to 1 MilliSatoshi if not present,
-    /// can not be less than 1 or more than `maxWithdrawable`
+    /// can not be less than 1 or more than `max_withdrawable`
     #[serde(rename = "minWithdrawable")]
     pub min_withdrawable: Option<u64>,
     /// tag of the request
     pub tag: Tag,
 }
 
-impl LnURLResponse for WithdrawalResponse {
-    fn tag(&self) -> Tag {
-        self.tag.clone()
-    }
+/// Response is the response format returned by Service.
+/// Example: `{\"status\":\"ERROR\",\"reason\":\"error detail...\"}"`
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(tag = "status")]
+pub enum Response {
+    #[serde(rename = "ERROR")]
+    Error { reason: String },
+    #[serde(rename = "OK")]
+    Ok { event: Option<String> },
+}
 
-    fn callback(&self) -> String {
-        self.callback.clone()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn response_from_str() {
+        let tests = vec![
+            (
+                r#"{"status":"ERROR","reason":"error detail..."}"#,
+                Response::Error {
+                    reason: "error detail...".to_string(),
+                },
+            ),
+            (
+                r#"{"status":"OK","event":"LOGGEDIN"}"#,
+                Response::Ok {
+                    event: Some("LOGGEDIN".to_string()),
+                },
+            ),
+        ];
+
+        for test in tests {
+            let resp: Response = serde_json::from_str(test.0).unwrap();
+            assert_eq!(resp, test.1);
+        }
+    }
+    #[test]
+    fn response_to_str() {
+        let tests = vec![
+            (
+                r#"{"status":"ERROR","reason":"error detail..."}"#,
+                Response::Error {
+                    reason: "error detail...".to_string(),
+                },
+            ),
+            (
+                r#"{"status":"OK","event":"LOGGEDIN"}"#,
+                Response::Ok {
+                    event: Some("LOGGEDIN".to_string()),
+                },
+            ),
+        ];
+
+        for test in tests {
+            let json = serde_json::to_string(&test.1).unwrap();
+            assert_eq!(json, test.0);
+        }
     }
 }
