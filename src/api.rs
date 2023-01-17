@@ -1,3 +1,4 @@
+use crate::Error as LnUrlError;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin_hashes::Hash;
 use lightning_invoice::Invoice;
@@ -5,23 +6,29 @@ use serde::de::Error;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-pub fn decode_ln_url_response(string: &str) -> LnUrlResponse {
-    let json: serde_json::Value = serde_json::from_str(string).unwrap();
+pub fn decode_ln_url_response(string: &str) -> Result<LnUrlResponse, LnUrlError> {
+    let json: serde_json::Value = serde_json::from_str(string)?;
     decode_ln_url_response_from_json(json)
 }
 
-pub fn decode_ln_url_response_from_json(json: serde_json::Value) -> LnUrlResponse {
-    let obj = json.as_object().unwrap();
-    let tag_str = obj.get("tag").unwrap().as_str().unwrap();
-    let tag = Tag::from_str(tag_str).unwrap();
+pub fn decode_ln_url_response_from_json(
+    json: serde_json::Value,
+) -> Result<LnUrlResponse, LnUrlError> {
+    let obj = json.as_object().ok_or(LnUrlError::InvalidResponse)?;
+    let tag_str = obj
+        .get("tag")
+        .and_then(|v| v.as_str())
+        .ok_or(LnUrlError::InvalidResponse)?;
+
+    let tag = Tag::from_str(tag_str)?;
     match tag {
         Tag::PayRequest => {
-            let pay_response: PayResponse = serde_json::from_value(json).unwrap();
-            LnUrlResponse::LnUrlPayResponse(pay_response)
+            let pay_response: PayResponse = serde_json::from_value(json)?;
+            Ok(LnUrlResponse::LnUrlPayResponse(pay_response))
         }
         Tag::WithdrawRequest => {
-            let resp: WithdrawalResponse = serde_json::from_value(json).unwrap();
-            LnUrlResponse::LnUrlWithdrawResponse(resp)
+            let resp: WithdrawalResponse = serde_json::from_value(json)?;
+            Ok(LnUrlResponse::LnUrlWithdrawResponse(resp))
         }
     }
 }
