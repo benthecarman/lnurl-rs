@@ -42,7 +42,7 @@ impl BlockingClient {
         match resp {
             Ok(resp) => {
                 let json: serde_json::Value = resp.into_json()?;
-                Ok(decode_ln_url_response_from_json(json))
+                decode_ln_url_response_from_json(json)
             }
             Err(ureq::Error::Status(code, _)) => Err(Error::HttpResponse(code)),
             Err(e) => Err(Error::Ureq(e)),

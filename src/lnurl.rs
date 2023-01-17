@@ -33,7 +33,7 @@ impl FromStr for LnUrl {
 
     fn from_str(s: &str) -> Result<Self, Error> {
         if s.to_lowercase().starts_with("lnurl") {
-            let (_, data, _) = bech32::decode(s).unwrap();
+            let (_, data, _) = bech32::decode(s).map_err(|_| Error::InvalidLnUrl)?;
             let bytes =
                 bech32::FromBase32::from_base32(data.as_ref()).map_err(|_| Error::InvalidLnUrl)?;
             let url = String::from_utf8(bytes).map_err(|_| Error::InvalidLnUrl)?;

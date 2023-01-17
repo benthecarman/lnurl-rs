@@ -80,6 +80,10 @@ pub enum Error {
     Io(io::Error),
     /// No header found in ureq response
     NoHeader,
+    /// Error decoding JSON
+    Json(serde_json::Error),
+    /// Invalid Response
+    InvalidResponse,
     /// Invalid number returned
     Parsing(std::num::ParseIntError),
     /// Invalid Bitcoin data returned
@@ -113,6 +117,7 @@ impl_error!(::ureq::Transport, UreqTransport, Error);
 #[cfg(any(feature = "async", feature = "async-https"))]
 impl_error!(::reqwest::Error, Reqwest, Error);
 impl_error!(io::Error, Io, Error);
+impl_error!(serde_json::Error, Json, Error);
 impl_error!(std::num::ParseIntError, Parsing, Error);
 impl_error!(bitcoin::hashes::hex::Error, Hex, Error);
 

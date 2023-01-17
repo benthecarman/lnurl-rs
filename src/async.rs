@@ -38,7 +38,7 @@ impl AsyncClient {
         let resp = self.client.get(url).send().await?;
 
         let txt = resp.error_for_status()?.text().await?;
-        Ok(decode_ln_url_response(&txt))
+        decode_ln_url_response(&txt)
     }
 
     pub async fn get_invoice(
