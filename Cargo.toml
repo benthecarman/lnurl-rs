@@ -3,6 +3,13 @@ name = "lnurl-rs"
 version = "0.1.0"
 edition = "2021"
 authors = ["Ben Carman <benthecarman@live.com>"]
+license = "MIT"
+homepage = "https://github.com/benthecarman/lnurl-rs/"
+repository = "https://github.com/benthecarman/lnurl-rs/"
+readme = "README.md"
+documentation = "https://docs.rs/lnurl-client/"
+description = "A basic LNURL implementation in Rust"
+keywords = [ "lightning", "bitcoin" ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
