@@ -7,7 +7,7 @@ license = "MIT"
 homepage = "https://github.com/benthecarman/lnurl-rs/"
 repository = "https://github.com/benthecarman/lnurl-rs/"
 readme = "README.md"
-documentation = "https://docs.rs/lnurl-client/"
+documentation = "https://docs.rs/lnurl-rs/"
 description = "A basic LNURL implementation in Rust"
 keywords = [ "lightning", "bitcoin" ]
 
