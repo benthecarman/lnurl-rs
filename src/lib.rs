@@ -19,7 +19,7 @@ use std::{fmt, io};
 
 #[derive(Debug, Clone, Default)]
 pub struct Builder {
-    /// Optional URL of the proxy to use to make requests to the Esplora server
+    /// Optional URL of the proxy to use to make requests to the LNURL server
     ///
     /// The string should be formatted as: `<protocol>://<user>:<password>@host:<port>`.
     ///
