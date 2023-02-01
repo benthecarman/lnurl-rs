@@ -33,6 +33,7 @@ pub fn decode_ln_url_response_from_json(
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum LnUrlResponse {
     LnUrlPayResponse(PayResponse),
     LnUrlWithdrawResponse(WithdrawalResponse),
@@ -58,7 +59,7 @@ impl FromStr for Tag {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PayResponse {
     /// a second-level url which give you an invoice with a GET request
     /// and an amount
@@ -99,7 +100,7 @@ impl LnURLPayInvoice {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WithdrawalResponse {
     /// A default withdrawal invoice description
     #[serde(rename = "defaultDescription")]
