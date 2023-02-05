@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use crate::Error as LnUrlError;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin_hashes::Hash;
@@ -45,6 +46,15 @@ pub enum Tag {
     PayRequest,
     #[serde(rename = "withdrawRequest")]
     WithdrawRequest,
+}
+
+impl Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Tag::PayRequest => write!(f, "payRequest"),
+            Tag::WithdrawRequest => write!(f, "withdrawRequest"),
+        }
+    }
 }
 
 impl FromStr for Tag {
