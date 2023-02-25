@@ -1,10 +1,10 @@
-use std::fmt::Display;
 use crate::Error as LnUrlError;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin_hashes::Hash;
 use lightning_invoice::Invoice;
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 use std::str::FromStr;
 
 pub fn decode_ln_url_response(string: &str) -> Result<LnUrlResponse, LnUrlError> {

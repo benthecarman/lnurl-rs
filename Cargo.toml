@@ -26,6 +26,7 @@ bitcoin = { version = "0.29.2", features = ["serde"] }
 ureq = { version = "2.5.0", features = ["json"], optional = true }
 reqwest = { version = "0.11", optional = true, default-features = false, features = ["json"] }
 lightning-invoice = { version = "0.21.0" }
+email_address = "0.2.4"
 
 [dev-dependencies]
 tokio = { version = "1.20.1", features = ["full"] }
