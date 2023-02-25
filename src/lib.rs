@@ -6,6 +6,7 @@ pub mod api;
 pub mod r#async;
 #[cfg(feature = "blocking")]
 pub mod blocking;
+pub mod lightning_address;
 pub mod lnurl;
 
 pub use api::*;
@@ -65,6 +66,8 @@ impl Builder {
 pub enum Error {
     /// Error decoding lnurl
     InvalidLnUrl,
+    /// Error decoding lightning address
+    InvalidLightningAddress,
     /// Error during ureq HTTP request
     #[cfg(feature = "blocking")]
     Ureq(ureq::Error),
@@ -124,6 +127,7 @@ impl_error!(bitcoin::hashes::hex::Error, Hex, Error);
 #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
 #[cfg(test)]
 mod tests {
+    use crate::lightning_address::LightningAddress;
     use crate::lnurl::LnUrl;
     use crate::LnUrlResponse::{LnUrlPayResponse, LnUrlWithdrawResponse};
     use crate::{AsyncClient, BlockingClient, Builder, Response};
@@ -145,6 +149,38 @@ mod tests {
 
         let res = blocking_client.make_request(url).unwrap();
         let res_async = async_client.make_request(url).await.unwrap();
+
+        // check res_async
+        match res_async {
+            LnUrlPayResponse(_) => {}
+            _ => panic!("Wrong response type"),
+        }
+
+        if let LnUrlPayResponse(pay) = res {
+            let msats = 1_000_000;
+            let invoice = blocking_client.get_invoice(&pay, msats).unwrap();
+            let invoice_async = async_client.get_invoice(&pay, msats).await.unwrap();
+
+            assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
+            assert_eq!(invoice_async.invoice().amount_milli_satoshis(), Some(msats));
+        } else {
+            panic!("Wrong response type");
+        }
+    }
+
+    #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
+    #[tokio::test]
+    async fn test_get_invoice_ln_addr() {
+        let ln_addr = LightningAddress::from_str("ben@opreturnbot.com").unwrap();
+        let (blocking_client, async_client) = setup_clients().await;
+
+        let res = blocking_client
+            .make_request(ln_addr.lnurlp_url().as_str())
+            .unwrap();
+        let res_async = async_client
+            .make_request(ln_addr.lnurlp_url().as_str())
+            .await
+            .unwrap();
 
         // check res_async
         match res_async {
