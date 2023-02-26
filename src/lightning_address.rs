@@ -9,6 +9,7 @@ pub struct LightningAddress {
 }
 
 impl LightningAddress {
+    #[inline]
     pub fn lnurlp_url(&self) -> String {
         format!(
             "https://{}/.well-known/lnurlp/{}",
