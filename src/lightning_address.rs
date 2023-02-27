@@ -4,6 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct LightningAddress {
     value: EmailAddress,
 }

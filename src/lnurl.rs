@@ -1,8 +1,10 @@
 use crate::Error;
 use bech32::{ToBase32, Variant};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+#[derive(Debug, PartialEq, Clone, Ord, PartialOrd, Eq, Hash)]
 pub struct LnUrl {
     pub url: String,
 }
@@ -25,6 +27,25 @@ impl LnUrl {
 impl Display for LnUrl {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.encode())
+    }
+}
+
+impl Serialize for LnUrl {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.encode())
+    }
+}
+
+impl<'de> Deserialize<'de> for LnUrl {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        LnUrl::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 
