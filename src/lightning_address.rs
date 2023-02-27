@@ -1,3 +1,4 @@
+use crate::lnurl::LnUrl;
 use crate::Error;
 use email_address::EmailAddress;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -17,6 +18,11 @@ impl LightningAddress {
             self.value.domain(),
             self.value.local_part()
         )
+    }
+
+    #[inline]
+    pub fn lnurl(&self) -> LnUrl {
+        LnUrl::from_url(self.lnurlp_url()).unwrap()
     }
 }
 
@@ -64,6 +70,7 @@ impl Display for LightningAddress {
 #[cfg(test)]
 mod test {
     use crate::lightning_address::LightningAddress;
+    use crate::lnurl::LnUrl;
     use std::str::FromStr;
 
     #[test]
@@ -81,5 +88,13 @@ mod test {
         assert!(LightningAddress::from_str("invalid").is_err());
         assert!(LightningAddress::from_str("####").is_err());
         assert!(LightningAddress::from_str("LNURL1DP68GURN8GHJ7UM9WFMXJCM99E3K7MF0V9CXJ0M385EKVCENXC6R2C35XVUKXEFCV5MKVV34X5EKZD3EV56NYD3HXQURZEPEXEJXXEPNXSCRVWFNV9NXZCN9XQ6XYEFHVGCXXCMYXYMNSERXFQ5FNS").is_err());
+    }
+
+    #[test]
+    fn test_lnurl() {
+        let address = LightningAddress::from_str("ben@opreturnbot.com").unwrap();
+        let lnurl = LnUrl::from_str("lnurl1dp68gurn8ghj7mmswfjhgatjde3x7apwvdhk6tewwajkcmpdddhx7amw9akxuatjd3cz7cn9dc94s6d4").unwrap();
+
+        assert_eq!(address.lnurl(), lnurl);
     }
 }
