@@ -31,6 +31,10 @@ pub fn decode_ln_url_response_from_json(
             let resp: WithdrawalResponse = serde_json::from_value(json)?;
             Ok(LnUrlResponse::LnUrlWithdrawResponse(resp))
         }
+        Tag::ChannelRequest => {
+            let resp: ChannelResponse = serde_json::from_value(json)?;
+            Ok(LnUrlResponse::LnUrlChannelResponse(resp))
+        }
     }
 }
 
@@ -38,6 +42,7 @@ pub fn decode_ln_url_response_from_json(
 pub enum LnUrlResponse {
     LnUrlPayResponse(PayResponse),
     LnUrlWithdrawResponse(WithdrawalResponse),
+    LnUrlChannelResponse(ChannelResponse),
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -46,6 +51,8 @@ pub enum Tag {
     PayRequest,
     #[serde(rename = "withdrawRequest")]
     WithdrawRequest,
+    #[serde(rename = "channelRequest")]
+    ChannelRequest,
 }
 
 impl Display for Tag {
@@ -53,6 +60,7 @@ impl Display for Tag {
         match self {
             Tag::PayRequest => write!(f, "payRequest"),
             Tag::WithdrawRequest => write!(f, "withdrawRequest"),
+            Tag::ChannelRequest => write!(f, "channelRequest"),
         }
     }
 }
@@ -64,6 +72,7 @@ impl FromStr for Tag {
         match s {
             "payRequest" => Ok(Tag::PayRequest),
             "withdrawRequest" => Ok(Tag::WithdrawRequest),
+            "channelRequest" => Ok(Tag::ChannelRequest),
             _ => Err(serde_json::Error::custom("Unknown tag")),
         }
     }
@@ -127,6 +136,18 @@ pub struct WithdrawalResponse {
     /// can not be less than 1 or more than `max_withdrawable`
     #[serde(rename = "minWithdrawable")]
     pub min_withdrawable: Option<u64>,
+    /// tag of the request
+    pub tag: Tag,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChannelResponse {
+    /// Remote node address of form node_key@ip_address:port_number
+    pub uri: String,
+    /// a second-level URL which would initiate an OpenChannel message from target LN node
+    pub callback: String,
+    /// random or non-random string to identify the user's LN WALLET when using the callback URL
+    pub k1: String,
     /// tag of the request
     pub tag: Tag,
 }
