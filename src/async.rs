@@ -1,6 +1,7 @@
 //! LNURL by way of `reqwest` HTTP client.
 #![allow(clippy::result_large_err)]
 
+use bitcoin::PublicKey;
 use reqwest::Client;
 
 use crate::api::*;
@@ -72,6 +73,32 @@ impl AsyncClient {
             "{}{}k1={}&pr={}",
             withdrawal.callback, symbol, withdrawal.k1, invoice
         );
+        let resp = self.client.get(url).send().await?;
+
+        Ok(resp.error_for_status()?.json().await?)
+    }
+
+    pub async fn open_channel(
+        &self,
+        channel: &ChannelResponse,
+        node_pubkey: PublicKey,
+        private: bool,
+    ) -> Result<Response, Error> {
+        let symbol = if channel.callback.contains('?') {
+            "&"
+        } else {
+            "?"
+        };
+
+        let url = format!(
+            "{}{}k1={}&remoteid={}&private={}",
+            channel.callback,
+            symbol,
+            channel.k1,
+            node_pubkey,
+            private as i32 // 0 or 1
+        );
+
         let resp = self.client.get(url).send().await?;
 
         Ok(resp.error_for_status()?.json().await?)

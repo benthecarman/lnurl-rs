@@ -1,13 +1,14 @@
 //! LNURL by way of `ureq` HTTP client.
 #![allow(clippy::result_large_err)]
 
+use bitcoin::PublicKey;
 use std::time::Duration;
 
 use ureq::{Agent, Proxy};
 
 use crate::{
-    decode_ln_url_response_from_json, Builder, Error, LnURLPayInvoice, LnUrlResponse, PayResponse,
-    Response, WithdrawalResponse,
+    decode_ln_url_response_from_json, Builder, ChannelResponse, Error, LnURLPayInvoice,
+    LnUrlResponse, PayResponse, Response, WithdrawalResponse,
 };
 
 #[derive(Debug, Clone)]
@@ -78,6 +79,36 @@ impl BlockingClient {
         let url = format!(
             "{}{}k1={}&pr={}",
             withdrawal.callback, symbol, withdrawal.k1, invoice
+        );
+
+        let resp = self.agent.get(&url).call();
+
+        match resp {
+            Ok(resp) => Ok(resp.into_json()?),
+            Err(ureq::Error::Status(code, _)) => Err(Error::HttpResponse(code)),
+            Err(e) => Err(Error::Ureq(e)),
+        }
+    }
+
+    pub fn open_channel(
+        &self,
+        channel: &ChannelResponse,
+        node_pubkey: PublicKey,
+        private: bool,
+    ) -> Result<Response, Error> {
+        let symbol = if channel.callback.contains('?') {
+            "&"
+        } else {
+            "?"
+        };
+
+        let url = format!(
+            "{}{}k1={}&remoteid={}&private={}",
+            channel.callback,
+            symbol,
+            channel.k1,
+            node_pubkey,
+            private as i32 // 0 or 1
         );
 
         let resp = self.agent.get(&url).call();

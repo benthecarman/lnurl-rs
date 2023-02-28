@@ -12,4 +12,4 @@ A rust implementation of [LNURL](https://github.com/lnurl/luds).
 - [x] lightning-address
 - [x] lnurl-withdraw
 - [ ] lnurl-auth
-- [ ] lnurl-channel
+- [x] lnurl-channel
