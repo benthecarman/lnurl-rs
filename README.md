@@ -9,6 +9,7 @@ A rust implementation of [LNURL](https://github.com/lnurl/luds).
 ## Progress
 
 - [x] lnurl-pay
+- [x] lightning-address
 - [x] lnurl-withdraw
 - [ ] lnurl-auth
 - [ ] lnurl-channel
