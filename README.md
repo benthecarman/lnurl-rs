@@ -6,10 +6,9 @@
 
 A rust implementation of [LNURL](https://github.com/lnurl/luds). Supports plaintext, TLS and Onion servers. Blocking or async. WASM enabled.
 
-## Progress
+## Supported
 
-- [x] lnurl-pay
-- [x] lightning-address
-- [x] lnurl-withdraw
-- [ ] lnurl-auth
-- [x] lnurl-channel
+- lnurl-pay
+- lightning-address
+- lnurl-withdraw
+- lnurl-channel
