@@ -1,7 +1,7 @@
+use crate::channel::ChannelResponse;
+use crate::pay::PayResponse;
+use crate::withdraw::WithdrawalResponse;
 use crate::Error as LnUrlError;
-use bitcoin::hashes::sha256::Hash as Sha256;
-use bitcoin_hashes::Hash;
-use lightning_invoice::Invoice;
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -76,80 +76,6 @@ impl FromStr for Tag {
             _ => Err(serde_json::Error::custom("Unknown tag")),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct PayResponse {
-    /// a second-level url which give you an invoice with a GET request
-    /// and an amount
-    pub callback: String,
-    /// max sendable amount for a given user on a given service
-    #[serde(rename = "maxSendable")]
-    pub max_sendable: u64,
-    /// min sendable amount for a given user on a given service,
-    /// can not be less than 1 or more than `max_sendable`
-    #[serde(rename = "minSendable")]
-    pub min_sendable: u64,
-    /// tag of the request
-    pub tag: Tag,
-    /// Metadata json which must be presented as raw string here,
-    /// this is required to pass signature verification at a later step
-    pub metadata: String,
-}
-
-impl PayResponse {
-    pub fn metadata_json(&self) -> serde_json::Value {
-        serde_json::from_str(&self.metadata).unwrap()
-    }
-
-    pub fn metadata_hash(&self) -> [u8; 32] {
-        Sha256::hash(self.metadata.as_bytes()).into_inner()
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LnURLPayInvoice {
-    /// Encoded bolt 11 invoice
-    pr: String,
-}
-
-impl LnURLPayInvoice {
-    pub fn invoice(&self) -> Invoice {
-        Invoice::from_str(&self.pr).unwrap()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WithdrawalResponse {
-    /// A default withdrawal invoice description
-    #[serde(rename = "defaultDescription")]
-    pub default_description: String,
-    /// a second-level url which would accept a withdrawal
-    /// lightning invoice as query parameter
-    pub callback: String,
-    /// an ephemeral secret which would allow user to withdraw funds
-    pub k1: String,
-    /// max withdrawable amount for a given user on a given service
-    #[serde(rename = "maxWithdrawable")]
-    pub max_withdrawable: u64,
-    /// An optional field, defaults to 1 MilliSatoshi if not present,
-    /// can not be less than 1 or more than `max_withdrawable`
-    #[serde(rename = "minWithdrawable")]
-    pub min_withdrawable: Option<u64>,
-    /// tag of the request
-    pub tag: Tag,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ChannelResponse {
-    /// Remote node address of form node_key@ip_address:port_number
-    pub uri: String,
-    /// a second-level URL which would initiate an OpenChannel message from target LN node
-    pub callback: String,
-    /// random or non-random string to identify the user's LN WALLET when using the callback URL
-    pub k1: String,
-    /// tag of the request
-    pub tag: Tag,
 }
 
 /// Response is the response format returned by Service.
