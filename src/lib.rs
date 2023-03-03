@@ -1,13 +1,16 @@
 #![allow(clippy::result_large_err)]
 
 pub mod api;
+pub mod channel;
+pub mod lightning_address;
+pub mod lnurl;
+pub mod pay;
+pub mod withdraw;
 
 #[cfg(any(feature = "async", feature = "async-https"))]
 pub mod r#async;
 #[cfg(feature = "blocking")]
 pub mod blocking;
-pub mod lightning_address;
-pub mod lnurl;
 
 pub use api::*;
 #[cfg(feature = "blocking")]
