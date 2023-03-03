@@ -9,7 +9,7 @@ repository = "https://github.com/benthecarman/lnurl-rs/"
 readme = "README.md"
 documentation = "https://docs.rs/lnurl-rs/"
 description = "A basic LNURL implementation in Rust"
-keywords = [ "lightning", "bitcoin" ]
+keywords = ["lightning", "bitcoin"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,14 +25,15 @@ bitcoin_hashes = { version = "0.11", default-features = false }
 bitcoin = { version = "0.29.2", features = ["serde"] }
 ureq = { version = "2.5.0", features = ["json"], optional = true }
 reqwest = { version = "0.11", optional = true, default-features = false, features = ["json"] }
-lightning-invoice = { version = "0.21.0" }
+lightning-invoice = { version = "0.21.0", default-features = false }
 email_address = "0.2.4"
 
 [dev-dependencies]
 tokio = { version = "1.20.1", features = ["full"] }
 
 [features]
-default = ["blocking", "async", "async-https"]
+default = ["blocking", "async", "async-https", "lightning-invoice/default"]
 blocking = ["ureq", "ureq/socks"]
 async = ["reqwest", "reqwest/socks"]
 async-https = ["reqwest/default-tls"]
+no-std = ["lightning-invoice/no-std"]
