@@ -1,6 +1,6 @@
 [package]
 name = "lnurl-rs"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 authors = ["Ben Carman <benthecarman@live.com>"]
 license = "MIT"
@@ -36,4 +36,5 @@ default = ["blocking", "async", "async-https", "lightning-invoice/default"]
 blocking = ["ureq", "ureq/socks"]
 async = ["reqwest", "reqwest/socks"]
 async-https = ["reqwest/default-tls"]
+std = ["lightning-invoice/std"]
 no-std = ["lightning-invoice/no-std"]
