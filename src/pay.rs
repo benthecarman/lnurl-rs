@@ -1,6 +1,6 @@
 use crate::Tag;
 use bitcoin::hashes::sha256::Hash as Sha256;
-use bitcoin_hashes::Hash;
+use bitcoin::hashes::Hash;
 use lightning_invoice::Invoice;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
