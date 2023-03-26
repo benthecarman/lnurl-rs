@@ -1,9 +1,12 @@
-use crate::Tag;
+use std::str::FromStr;
+
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
+use bitcoin::XOnlyPublicKey;
 use lightning_invoice::Invoice;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+
+use crate::Tag;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PayResponse {
@@ -22,6 +25,14 @@ pub struct PayResponse {
     /// Metadata json which must be presented as raw string here,
     /// this is required to pass signature verification at a later step
     pub metadata: String,
+
+    /// Optional, if true, the service allows nostr zaps
+    #[serde(rename = "allowsNostr")]
+    pub allows_nostr: Option<bool>,
+
+    /// Optional, if true, the nostr pubkey that will be used to sign zap events
+    #[serde(rename = "nostrPubkey")]
+    pub nostr_pubkey: Option<XOnlyPublicKey>,
 }
 
 impl PayResponse {
