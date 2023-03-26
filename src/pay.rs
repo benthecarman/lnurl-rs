@@ -48,7 +48,7 @@ impl PayResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LnURLPayInvoice {
     /// Encoded bolt 11 invoice
-    pr: String,
+    pub pr: String,
 }
 
 impl LnURLPayInvoice {
