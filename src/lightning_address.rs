@@ -22,7 +22,7 @@ impl LightningAddress {
 
     #[inline]
     pub fn lnurl(&self) -> LnUrl {
-        LnUrl::from_url(self.lnurlp_url()).unwrap()
+        LnUrl::from_url(self.lnurlp_url())
     }
 }
 

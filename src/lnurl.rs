@@ -10,17 +10,20 @@ pub struct LnUrl {
 }
 
 impl LnUrl {
+    #[inline]
     pub fn encode(&self) -> String {
         let base32 = self.url.as_bytes().to_base32();
         bech32::encode("lnurl", base32, Variant::Bech32).unwrap()
     }
 
+    #[inline]
     pub fn decode(lnurl: String) -> Result<LnUrl, Error> {
-        LnUrl::from_str(lnurl.as_str())
+        LnUrl::from_str(&lnurl)
     }
 
-    pub fn from_url(url: String) -> Result<LnUrl, Error> {
-        Ok(LnUrl { url })
+    #[inline]
+    pub fn from_url(url: String) -> LnUrl {
+        LnUrl { url }
     }
 }
 
@@ -55,8 +58,7 @@ impl FromStr for LnUrl {
     fn from_str(s: &str) -> Result<Self, Error> {
         if s.to_lowercase().starts_with("lnurl") {
             let (_, data, _) = bech32::decode(s).map_err(|_| Error::InvalidLnUrl)?;
-            let bytes =
-                bech32::FromBase32::from_base32(data.as_ref()).map_err(|_| Error::InvalidLnUrl)?;
+            let bytes = bech32::FromBase32::from_base32(&data).map_err(|_| Error::InvalidLnUrl)?;
             let url = String::from_utf8(bytes).map_err(|_| Error::InvalidLnUrl)?;
             Ok(LnUrl { url })
         } else {
@@ -75,7 +77,7 @@ mod tests {
         let expected =
             "LNURL1DP68GURN8GHJ7UM9WFMXJCM99E3K7MF0V9CXJ0M385EKVCENXC6R2C35XVUKXEFCV5MKVV34X5EKZD3EV56NYD3HXQURZEPEXEJXXEPNXSCRVWFNV9NXZCN9XQ6XYEFHVGCXXCMYXYMNSERXFQ5FNS";
 
-        let lnurl = LnUrl::from_url(url.to_string()).unwrap();
+        let lnurl = LnUrl::from_url(url.to_string());
         assert_eq!(lnurl.to_string().to_uppercase(), expected);
     }
 
