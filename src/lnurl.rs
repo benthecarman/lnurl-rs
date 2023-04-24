@@ -16,6 +16,10 @@ impl LnUrl {
         bech32::encode("lnurl", base32, Variant::Bech32).unwrap()
     }
 
+    pub fn is_lnurl_auth(&self) -> bool {
+        self.url.contains("tag=login") && self.url.contains("k1=")
+    }
+
     #[inline]
     pub fn decode(lnurl: String) -> Result<LnUrl, Error> {
         LnUrl::from_str(&lnurl)
@@ -89,5 +93,20 @@ mod tests {
 
         let lnurl = LnUrl::decode(str.to_string()).unwrap();
         assert_eq!(lnurl.url, expected);
+    }
+
+    #[test]
+    fn lnurl_auth_test() {
+        let str = "https://service.com/api?q=3fc3645b439ce8e7f2553a69e5267081d96dcd340693afabe04be7b0ccd178df&tag=login&k1=3fc3645b439ce8e7f2553a69e5267081d96dcd340693afabe04be7b0ccd178df";
+        let lnurl = LnUrl::from_url(str.to_string());
+        assert!(lnurl.is_lnurl_auth());
+
+        let str = "https://service.com/api?q=3fc3645b439ce8e7f2553a69e5267081d96dcd340693afabe04be7b0ccd178df&tag=login";
+        let lnurl = LnUrl::from_url(str.to_string());
+        assert!(!lnurl.is_lnurl_auth());
+
+        let str = "https://service.com/api?q=3fc3645b439ce8e7f2553a69e5267081d96dcd340693afabe04be7b0ccd178df&k1=3fc3645b439ce8e7f2553a69e5267081d96dcd340693afabe04be7b0ccd178df";
+        let lnurl = LnUrl::from_url(str.to_string());
+        assert!(!lnurl.is_lnurl_auth());
     }
 }
