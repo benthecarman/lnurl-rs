@@ -134,7 +134,7 @@ mod tests {
     use crate::lnurl::LnUrl;
     use crate::LnUrlResponse::{LnUrlChannelResponse, LnUrlPayResponse, LnUrlWithdrawResponse};
     use crate::{AsyncClient, BlockingClient, Builder, Response};
-    use bitcoin::PublicKey;
+    use bitcoin::secp256k1::PublicKey;
     use std::str::FromStr;
 
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]

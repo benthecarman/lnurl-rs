@@ -1,11 +1,13 @@
 //! LNURL by way of `reqwest` HTTP client.
 #![allow(clippy::result_large_err)]
 
-use bitcoin::PublicKey;
+use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::secp256k1::PublicKey;
 use reqwest::Client;
 
 use crate::api::*;
 use crate::channel::ChannelResponse;
+use crate::lnurl::LnUrl;
 use crate::pay::{LnURLPayInvoice, PayResponse};
 use crate::withdraw::WithdrawalResponse;
 use crate::{decode_ln_url_response, Builder, Error};
@@ -101,6 +103,19 @@ impl AsyncClient {
             node_pubkey,
             private as i32 // 0 or 1
         );
+
+        let resp = self.client.get(url).send().await?;
+
+        Ok(resp.error_for_status()?.json().await?)
+    }
+
+    pub async fn lnurl_auth(
+        &self,
+        lnurl: LnUrl,
+        sig: Signature,
+        key: PublicKey,
+    ) -> Result<Response, Error> {
+        let url = format!("{}&sig={}&key={}", lnurl.url, sig, key);
 
         let resp = self.client.get(url).send().await?;
 

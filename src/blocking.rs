@@ -1,12 +1,14 @@
 //! LNURL by way of `ureq` HTTP client.
 #![allow(clippy::result_large_err)]
 
-use bitcoin::PublicKey;
+use bitcoin::secp256k1::ecdsa::Signature;
+use bitcoin::secp256k1::PublicKey;
 use std::time::Duration;
 
 use ureq::{Agent, Proxy};
 
 use crate::channel::ChannelResponse;
+use crate::lnurl::LnUrl;
 use crate::pay::{LnURLPayInvoice, PayResponse};
 use crate::withdraw::WithdrawalResponse;
 use crate::{decode_ln_url_response_from_json, Builder, Error, LnUrlResponse, Response};
@@ -110,6 +112,23 @@ impl BlockingClient {
             node_pubkey,
             private as i32 // 0 or 1
         );
+
+        let resp = self.agent.get(&url).call();
+
+        match resp {
+            Ok(resp) => Ok(resp.into_json()?),
+            Err(ureq::Error::Status(code, _)) => Err(Error::HttpResponse(code)),
+            Err(e) => Err(Error::Ureq(e)),
+        }
+    }
+
+    pub fn lnurl_auth(
+        &self,
+        lnurl: LnUrl,
+        sig: Signature,
+        key: PublicKey,
+    ) -> Result<Response, Error> {
+        let url = format!("{}&sig={}&key={}", lnurl.url, sig, key);
 
         let resp = self.agent.get(&url).call();
 
