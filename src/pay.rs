@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::XOnlyPublicKey;
@@ -48,11 +46,11 @@ impl PayResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LnURLPayInvoice {
     /// Encoded bolt 11 invoice
-    pub pr: String,
+    pr: Invoice,
 }
 
 impl LnURLPayInvoice {
     pub fn invoice(&self) -> Invoice {
-        Invoice::from_str(&self.pr).unwrap()
+        self.pr.clone()
     }
 }
