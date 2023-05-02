@@ -11,6 +11,12 @@ pub struct LightningAddress {
 }
 
 impl LightningAddress {
+    pub fn new(value: &str) -> Result<Self, Error> {
+        EmailAddress::from_str(value)
+            .map(|value| LightningAddress { value })
+            .map_err(|_| Error::InvalidLightningAddress)
+    }
+
     #[inline]
     pub fn lnurlp_url(&self) -> String {
         format!(
@@ -23,14 +29,6 @@ impl LightningAddress {
     #[inline]
     pub fn lnurl(&self) -> LnUrl {
         LnUrl::from_url(self.lnurlp_url())
-    }
-}
-
-impl LightningAddress {
-    pub fn new(value: &str) -> Result<Self, Error> {
-        EmailAddress::from_str(value)
-            .map(|value| LightningAddress { value })
-            .map_err(|_| Error::InvalidLightningAddress)
     }
 }
 
