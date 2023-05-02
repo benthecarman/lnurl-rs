@@ -50,6 +50,10 @@ pub struct LnURLPayInvoice {
 }
 
 impl LnURLPayInvoice {
+    pub fn new(invoice: Invoice) -> Self {
+        Self { pr: invoice }
+    }
+
     pub fn invoice(&self) -> Invoice {
         self.pr.clone()
     }
