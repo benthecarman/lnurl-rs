@@ -1,6 +1,7 @@
 #![allow(clippy::result_large_err)]
 
 pub mod api;
+mod auth;
 pub mod channel;
 pub mod lightning_address;
 pub mod lnurl;
@@ -11,6 +12,8 @@ pub mod withdraw;
 pub mod r#async;
 #[cfg(feature = "blocking")]
 pub mod blocking;
+
+pub use auth::get_derivation_path;
 
 pub use api::*;
 #[cfg(feature = "blocking")]
