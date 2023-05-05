@@ -59,6 +59,18 @@ impl<'de> Deserialize<'de> for LightningAddress {
     }
 }
 
+impl PartialOrd for LightningAddress {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.value.as_str().partial_cmp(other.value.as_str())
+    }
+}
+
+impl Ord for LightningAddress {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.value.as_str().cmp(other.value.as_str())
+    }
+}
+
 impl Display for LightningAddress {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.value)
