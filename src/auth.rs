@@ -7,7 +7,7 @@ use url::Url;
 
 /// Derive a derivation path from a hashing key and a url
 /// This is for LUD-05
-pub fn get_derivation_path(hashing_key: [u8; 32], url: Url) -> anyhow::Result<DerivationPath> {
+pub fn get_derivation_path(hashing_key: [u8; 32], url: &Url) -> anyhow::Result<DerivationPath> {
     // There exists a private hashingKey which is derived by user LN WALLET using m/138'/0 path.
     let mut engine = HmacEngine::<sha256::Hash>::new(&hashing_key);
 
@@ -51,7 +51,7 @@ mod test {
                 .unwrap();
         let url = Url::parse("https://site.com").unwrap();
 
-        let path = super::get_derivation_path(hashing_key, url).unwrap();
+        let path = super::get_derivation_path(hashing_key, &url).unwrap();
         let expected = DerivationPath::from_str(&format!(
             "m/138'/{}/{}/{}/{}",
             ChildNumber::from(1588488367),
