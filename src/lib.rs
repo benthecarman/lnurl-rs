@@ -99,6 +99,8 @@ pub enum Error {
     BitcoinEncoding(bitcoin::consensus::encode::Error),
     /// Invalid Hex data returned
     Hex(bitcoin::hashes::hex::Error),
+    /// Other error
+    Other(String),
 }
 
 impl fmt::Display for Error {
