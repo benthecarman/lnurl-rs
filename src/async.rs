@@ -12,7 +12,7 @@ use crate::pay::{LnURLPayInvoice, PayResponse};
 use crate::withdraw::WithdrawalResponse;
 use crate::{decode_ln_url_response, Builder, Error};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AsyncClient {
     client: Client,
 }
