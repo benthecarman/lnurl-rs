@@ -204,10 +204,10 @@ mod tests {
             };
 
             let invoice = blocking_client
-                .get_invoice(&pay, msats, Some(event.clone()))
+                .get_invoice(&pay, msats, Some(event.as_json()))
                 .unwrap();
             let invoice_async = async_client
-                .get_invoice(&pay, msats, Some(event))
+                .get_invoice(&pay, msats, Some(event.as_json()))
                 .await
                 .unwrap();
 

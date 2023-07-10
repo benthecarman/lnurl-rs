@@ -3,7 +3,6 @@
 
 use bitcoin::secp256k1::ecdsa::Signature;
 use bitcoin::secp256k1::PublicKey;
-use nostr::Event;
 use std::time::Duration;
 
 use ureq::{Agent, Proxy};
@@ -57,17 +56,14 @@ impl BlockingClient {
         &self,
         pay: &PayResponse,
         msats: u64,
-        zap_request: Option<Event>,
+        zap_request: Option<String>,
     ) -> Result<LnURLPayInvoice, Error> {
         let symbol = if pay.callback.contains('?') { "&" } else { "?" };
 
         let url = match zap_request {
             Some(zap_request) => format!(
                 "{}{}amount={}&nostr={}",
-                pay.callback,
-                symbol,
-                msats,
-                zap_request.as_json()
+                pay.callback, symbol, msats, zap_request
             ),
             None => format!("{}{}amount={}", pay.callback, symbol, msats),
         };
