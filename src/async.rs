@@ -51,14 +51,19 @@ impl AsyncClient {
         &self,
         pay: &PayResponse,
         msats: u64,
+        zap_request: Option<String>,
     ) -> Result<LnURLPayInvoice, Error> {
         let symbol = if pay.callback.contains('?') { "&" } else { "?" };
 
-        let resp = self
-            .client
-            .get(&format!("{}{}amount={}", pay.callback, symbol, msats))
-            .send()
-            .await?;
+        let url = match zap_request {
+            Some(zap_request) => format!(
+                "{}{}amount={}&nostr={}",
+                pay.callback, symbol, msats, zap_request
+            ),
+            None => format!("{}{}amount={}", pay.callback, symbol, msats),
+        };
+
+        let resp = self.client.get(&url).send().await?;
 
         Ok(resp.error_for_status()?.json().await?)
     }

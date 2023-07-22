@@ -99,6 +99,8 @@ pub enum Error {
     BitcoinEncoding(bitcoin::consensus::encode::Error),
     /// Invalid Hex data returned
     Hex(bitcoin::hashes::hex::Error),
+    /// Other error
+    Other(String),
 }
 
 impl fmt::Display for Error {
@@ -138,6 +140,7 @@ mod tests {
     use crate::LnUrlResponse::{LnUrlChannelResponse, LnUrlPayResponse, LnUrlWithdrawResponse};
     use crate::{AsyncClient, BlockingClient, Builder, Response};
     use bitcoin::secp256k1::PublicKey;
+    use nostr::{EventBuilder, Keys};
     use std::str::FromStr;
 
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
@@ -151,7 +154,7 @@ mod tests {
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     #[tokio::test]
     async fn test_get_invoice() {
-        let url = "https://opreturnbot.com/.well-known/lnurlp/ben";
+        let url = "https://benthecarman.com/.well-known/lnurlp/ben";
         let (blocking_client, async_client) = setup_clients().await;
 
         let res = blocking_client.make_request(url).unwrap();
@@ -165,8 +168,48 @@ mod tests {
 
         if let LnUrlPayResponse(pay) = res {
             let msats = 1_000_000;
-            let invoice = blocking_client.get_invoice(&pay, msats).unwrap();
-            let invoice_async = async_client.get_invoice(&pay, msats).await.unwrap();
+            let invoice = blocking_client.get_invoice(&pay, msats, None).unwrap();
+            let invoice_async = async_client.get_invoice(&pay, msats, None).await.unwrap();
+
+            assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
+            assert_eq!(invoice_async.invoice().amount_milli_satoshis(), Some(msats));
+        } else {
+            panic!("Wrong response type");
+        }
+    }
+
+    #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
+    #[tokio::test]
+    async fn test_get_zap_invoice() {
+        let url = "https://benthecarman.com/.well-known/lnurlp/ben";
+        let (blocking_client, async_client) = setup_clients().await;
+
+        let res = blocking_client.make_request(url).unwrap();
+        let res_async = async_client.make_request(url).await.unwrap();
+
+        // check res_async
+        match res_async {
+            LnUrlPayResponse(_) => {}
+            _ => panic!("Wrong response type"),
+        }
+
+        if let LnUrlPayResponse(pay) = res {
+            let msats = 1_000_000;
+
+            let keys = Keys::generate();
+            let event = {
+                EventBuilder::new_zap_request::<String>(keys.public_key(), None, Some(msats), None)
+                    .to_event(&keys)
+                    .unwrap()
+            };
+
+            let invoice = blocking_client
+                .get_invoice(&pay, msats, Some(event.as_json()))
+                .unwrap();
+            let invoice_async = async_client
+                .get_invoice(&pay, msats, Some(event.as_json()))
+                .await
+                .unwrap();
 
             assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
             assert_eq!(invoice_async.invoice().amount_milli_satoshis(), Some(msats));
@@ -197,8 +240,8 @@ mod tests {
 
         if let LnUrlPayResponse(pay) = res {
             let msats = 1_000_000;
-            let invoice = blocking_client.get_invoice(&pay, msats).unwrap();
-            let invoice_async = async_client.get_invoice(&pay, msats).await.unwrap();
+            let invoice = blocking_client.get_invoice(&pay, msats, None).unwrap();
+            let invoice_async = async_client.get_invoice(&pay, msats, None).await.unwrap();
 
             assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
             assert_eq!(invoice_async.invoice().amount_milli_satoshis(), Some(msats));

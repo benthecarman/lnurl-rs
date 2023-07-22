@@ -1,7 +1,7 @@
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::XOnlyPublicKey;
-use lightning_invoice::Invoice;
+use lightning_invoice::Bolt11Invoice;
 use serde::{Deserialize, Serialize};
 
 use crate::Tag;
@@ -46,15 +46,15 @@ impl PayResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LnURLPayInvoice {
     /// Encoded bolt 11 invoice
-    pr: Invoice,
+    pr: Bolt11Invoice,
 }
 
 impl LnURLPayInvoice {
-    pub fn new(invoice: Invoice) -> Self {
+    pub fn new(invoice: Bolt11Invoice) -> Self {
         Self { pr: invoice }
     }
 
-    pub fn invoice(&self) -> Invoice {
+    pub fn invoice(&self) -> Bolt11Invoice {
         self.pr.clone()
     }
 }

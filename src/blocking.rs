@@ -52,16 +52,40 @@ impl BlockingClient {
         }
     }
 
-    pub fn get_invoice(&self, pay: &PayResponse, msats: u64) -> Result<LnURLPayInvoice, Error> {
+    pub fn get_invoice(
+        &self,
+        pay: &PayResponse,
+        msats: u64,
+        zap_request: Option<String>,
+    ) -> Result<LnURLPayInvoice, Error> {
         let symbol = if pay.callback.contains('?') { "&" } else { "?" };
 
-        let resp = self
-            .agent
-            .get(&format!("{}{}amount={}", pay.callback, symbol, msats))
-            .call();
+        let url = match zap_request {
+            Some(zap_request) => format!(
+                "{}{}amount={}&nostr={}",
+                pay.callback, symbol, msats, zap_request
+            ),
+            None => format!("{}{}amount={}", pay.callback, symbol, msats),
+        };
+
+        let resp = self.agent.get(&url).call();
 
         match resp {
-            Ok(resp) => Ok(resp.into_json()?),
+            Ok(resp) => {
+                let json: serde_json::Value = resp.into_json()?;
+                let result = serde_json::from_value::<LnURLPayInvoice>(json.clone());
+
+                match result {
+                    Ok(invoice) => Ok(invoice),
+                    Err(_) => {
+                        let response = serde_json::from_value::<Response>(json)?;
+                        match response {
+                            Response::Error { reason } => Err(Error::Other(reason)),
+                            Response::Ok { .. } => unreachable!("Ok response should be an invoice"),
+                        }
+                    }
+                }
+            }
             Err(ureq::Error::Status(code, _)) => Err(Error::HttpResponse(code)),
             Err(e) => Err(Error::Ureq(e)),
         }
