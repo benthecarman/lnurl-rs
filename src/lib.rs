@@ -154,7 +154,7 @@ mod tests {
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     #[tokio::test]
     async fn test_get_invoice() {
-        let url = "https://opreturnbot.com/.well-known/lnurlp/ben";
+        let url = "https://benthecarman.com/.well-known/lnurlp/ben";
         let (blocking_client, async_client) = setup_clients().await;
 
         let res = blocking_client.make_request(url).unwrap();
@@ -181,7 +181,7 @@ mod tests {
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     #[tokio::test]
     async fn test_get_zap_invoice() {
-        let url = "https://opreturnbot.com/.well-known/lnurlp/ben";
+        let url = "https://benthecarman.com/.well-known/lnurlp/ben";
         let (blocking_client, async_client) = setup_clients().await;
 
         let res = blocking_client.make_request(url).unwrap();
