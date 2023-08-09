@@ -12,3 +12,23 @@ A rust implementation of [LNURL](https://github.com/lnurl/luds). Supports plaint
 - lightning-address
 - lnurl-withdraw
 - lnurl-channel
+
+## Examples
+
+### Lnurl Pay
+
+```rustc
+let ln_addr = LightningAddress::from_str("ben@zaps.benthecarman.com").unwrap();
+let async_client = Builder::default().build_async().unwrap();
+
+let res = async_client.make_request(url).await.unwrap();
+
+if let LnUrlPayResponse(pay) = res {
+    let msats = 1_000_000;
+    let invoice = async_client.get_invoice(&pay, msats, None).await.unwrap();
+
+    assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
+} else {
+    panic!("Wrong response type");
+}
+```
