@@ -140,6 +140,7 @@ mod tests {
     use crate::LnUrlResponse::{LnUrlChannelResponse, LnUrlPayResponse, LnUrlWithdrawResponse};
     use crate::{AsyncClient, BlockingClient, Builder, Response};
     use bitcoin::secp256k1::PublicKey;
+    use lightning_invoice::Bolt11Invoice;
     use nostr::{EventBuilder, Keys};
     use std::str::FromStr;
 
@@ -171,8 +172,11 @@ mod tests {
             let invoice = blocking_client.get_invoice(&pay, msats, None).unwrap();
             let invoice_async = async_client.get_invoice(&pay, msats, None).await.unwrap();
 
-            assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
-            assert_eq!(invoice_async.invoice().amount_milli_satoshis(), Some(msats));
+            let invoice = Bolt11Invoice::from_str(invoice.invoice().as_str()).unwrap();
+            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice().as_str()).unwrap();
+
+            assert_eq!(invoice.amount_milli_satoshis(), Some(msats));
+            assert_eq!(invoice_async.amount_milli_satoshis(), Some(msats));
         } else {
             panic!("Wrong response type");
         }
@@ -211,8 +215,11 @@ mod tests {
                 .await
                 .unwrap();
 
-            assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
-            assert_eq!(invoice_async.invoice().amount_milli_satoshis(), Some(msats));
+            let invoice = Bolt11Invoice::from_str(invoice.invoice().as_str()).unwrap();
+            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice().as_str()).unwrap();
+
+            assert_eq!(invoice.amount_milli_satoshis(), Some(msats));
+            assert_eq!(invoice_async.amount_milli_satoshis(), Some(msats));
         } else {
             panic!("Wrong response type");
         }
@@ -243,8 +250,11 @@ mod tests {
             let invoice = blocking_client.get_invoice(&pay, msats, None).unwrap();
             let invoice_async = async_client.get_invoice(&pay, msats, None).await.unwrap();
 
-            assert_eq!(invoice.invoice().amount_milli_satoshis(), Some(msats));
-            assert_eq!(invoice_async.invoice().amount_milli_satoshis(), Some(msats));
+            let invoice = Bolt11Invoice::from_str(invoice.invoice().as_str()).unwrap();
+            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice().as_str()).unwrap();
+
+            assert_eq!(invoice.amount_milli_satoshis(), Some(msats));
+            assert_eq!(invoice_async.amount_milli_satoshis(), Some(msats));
         } else {
             panic!("Wrong response type");
         }

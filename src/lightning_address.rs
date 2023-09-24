@@ -61,7 +61,7 @@ impl<'de> Deserialize<'de> for LightningAddress {
 
 impl PartialOrd for LightningAddress {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.value.as_str().partial_cmp(other.value.as_str())
+        Some(self.cmp(other))
     }
 }
 
