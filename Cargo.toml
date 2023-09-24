@@ -1,6 +1,6 @@
 [package]
 name = "lnurl-rs"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2018"
 authors = ["Ben Carman <benthecarman@live.com>"]
 license = "MIT"
