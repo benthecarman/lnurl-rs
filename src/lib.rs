@@ -74,6 +74,10 @@ pub enum Error {
     InvalidLnUrl,
     /// Error decoding lightning address
     InvalidLightningAddress,
+    /// Invalid LnURL pay comment
+    InvalidComment,
+    /// Invalid amount on request
+    InvalidAmount,
     /// Error during ureq HTTP request
     #[cfg(feature = "blocking")]
     Ureq(ureq::Error),
@@ -169,8 +173,13 @@ mod tests {
 
         if let LnUrlPayResponse(pay) = res {
             let msats = 1_000_000;
-            let invoice = blocking_client.get_invoice(&pay, msats, None).unwrap();
-            let invoice_async = async_client.get_invoice(&pay, msats, None).await.unwrap();
+            let invoice = blocking_client
+                .get_invoice(&pay, msats, None, None)
+                .unwrap();
+            let invoice_async = async_client
+                .get_invoice(&pay, msats, None, None)
+                .await
+                .unwrap();
 
             let invoice = Bolt11Invoice::from_str(invoice.invoice().as_str()).unwrap();
             let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice().as_str()).unwrap();
@@ -208,10 +217,10 @@ mod tests {
             };
 
             let invoice = blocking_client
-                .get_invoice(&pay, msats, Some(event.as_json()))
+                .get_invoice(&pay, msats, Some(event.as_json()), None)
                 .unwrap();
             let invoice_async = async_client
-                .get_invoice(&pay, msats, Some(event.as_json()))
+                .get_invoice(&pay, msats, Some(event.as_json()), None)
                 .await
                 .unwrap();
 
@@ -247,8 +256,13 @@ mod tests {
 
         if let LnUrlPayResponse(pay) = res {
             let msats = 1_000_000;
-            let invoice = blocking_client.get_invoice(&pay, msats, None).unwrap();
-            let invoice_async = async_client.get_invoice(&pay, msats, None).await.unwrap();
+            let invoice = blocking_client
+                .get_invoice(&pay, msats, None, None)
+                .unwrap();
+            let invoice_async = async_client
+                .get_invoice(&pay, msats, None, None)
+                .await
+                .unwrap();
 
             let invoice = Bolt11Invoice::from_str(invoice.invoice().as_str()).unwrap();
             let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice().as_str()).unwrap();
