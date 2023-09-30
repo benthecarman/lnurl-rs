@@ -50,7 +50,7 @@ impl PayResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LnURLPayInvoice {
     /// Encoded bolt 11 invoice
-    pr: String,
+    pub pr: String,
 }
 
 impl LnURLPayInvoice {
@@ -58,7 +58,7 @@ impl LnURLPayInvoice {
         Self { pr: invoice }
     }
 
-    pub fn invoice(&self) -> String {
-        self.pr.clone()
+    pub fn invoice(&self) -> &str {
+        self.pr.as_str()
     }
 }

@@ -181,8 +181,8 @@ mod tests {
                 .await
                 .unwrap();
 
-            let invoice = Bolt11Invoice::from_str(invoice.invoice().as_str()).unwrap();
-            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice().as_str()).unwrap();
+            let invoice = Bolt11Invoice::from_str(invoice.invoice()).unwrap();
+            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice()).unwrap();
 
             assert_eq!(invoice.amount_milli_satoshis(), Some(msats));
             assert_eq!(invoice_async.amount_milli_satoshis(), Some(msats));
@@ -224,8 +224,8 @@ mod tests {
                 .await
                 .unwrap();
 
-            let invoice = Bolt11Invoice::from_str(invoice.invoice().as_str()).unwrap();
-            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice().as_str()).unwrap();
+            let invoice = Bolt11Invoice::from_str(invoice.invoice()).unwrap();
+            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice()).unwrap();
 
             assert_eq!(invoice.amount_milli_satoshis(), Some(msats));
             assert_eq!(invoice_async.amount_milli_satoshis(), Some(msats));
@@ -264,8 +264,8 @@ mod tests {
                 .await
                 .unwrap();
 
-            let invoice = Bolt11Invoice::from_str(invoice.invoice().as_str()).unwrap();
-            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice().as_str()).unwrap();
+            let invoice = Bolt11Invoice::from_str(invoice.invoice()).unwrap();
+            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice()).unwrap();
 
             assert_eq!(invoice.amount_milli_satoshis(), Some(msats));
             assert_eq!(invoice_async.amount_milli_satoshis(), Some(msats));
