@@ -52,15 +52,35 @@ impl AsyncClient {
         pay: &PayResponse,
         msats: u64,
         zap_request: Option<String>,
+        comment: Option<String>,
     ) -> Result<LnURLPayInvoice, Error> {
+        // verify amount
+        if msats < pay.min_sendable || msats > pay.max_sendable {
+            return Err(Error::InvalidAmount);
+        }
+
+        // verify comment length
+        if let Some(comment) = &comment {
+            if let Some(max_length) = pay.comment_allowed {
+                if comment.len() > max_length as usize {
+                    return Err(Error::InvalidComment);
+                }
+            }
+        }
+
         let symbol = if pay.callback.contains('?') { "&" } else { "?" };
 
-        let url = match zap_request {
-            Some(zap_request) => format!(
+        let url = match (zap_request, comment) {
+            (Some(_), Some(_)) => return Err(Error::InvalidComment),
+            (Some(zap_request), None) => format!(
                 "{}{}amount={}&nostr={}",
                 pay.callback, symbol, msats, zap_request
             ),
-            None => format!("{}{}amount={}", pay.callback, symbol, msats),
+            (None, Some(comment)) => format!(
+                "{}{}amount={}&comment={}",
+                pay.callback, symbol, msats, comment
+            ),
+            (None, None) => format!("{}{}amount={}", pay.callback, symbol, msats),
         };
 
         let resp = self.client.get(&url).send().await?;

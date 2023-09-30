@@ -23,6 +23,11 @@ pub struct PayResponse {
     /// this is required to pass signature verification at a later step
     pub metadata: String,
 
+    /// Optional, if true, the service allows comments
+    /// the number is the max length of the comment
+    #[serde(rename = "commentAllowed")]
+    pub comment_allowed: Option<u32>,
+
     /// Optional, if true, the service allows nostr zaps
     #[serde(rename = "allowsNostr")]
     pub allows_nostr: Option<bool>,
