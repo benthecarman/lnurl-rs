@@ -57,7 +57,7 @@ impl BlockingClient {
         pay: &PayResponse,
         msats: u64,
         zap_request: Option<String>,
-        comment: Option<String>,
+        comment: Option<&str>,
     ) -> Result<LnURLPayInvoice, Error> {
         // verify amount
         if msats < pay.min_sendable || msats > pay.max_sendable {
@@ -65,7 +65,7 @@ impl BlockingClient {
         }
 
         // verify comment length
-        if let Some(comment) = &comment {
+        if let Some(comment) = comment {
             if let Some(max_length) = pay.comment_allowed {
                 if comment.len() > max_length as usize {
                     return Err(Error::InvalidComment);

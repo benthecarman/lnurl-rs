@@ -45,7 +45,7 @@ pub enum LnUrlResponse {
     LnUrlChannelResponse(ChannelResponse),
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Tag {
     #[serde(rename = "payRequest")]
     PayRequest,

@@ -1,11 +1,20 @@
+use aes::cipher::block_padding::Pkcs7;
+use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use aes::Aes256;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
-use bitcoin::XOnlyPublicKey;
+use bitcoin::{secp256k1, XOnlyPublicKey};
+use cbc::{Decryptor, Encryptor};
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
+use url::Url;
+
+type Aes256CbcEnc = Encryptor<Aes256>;
+type Aes256CbcDec = Decryptor<Aes256>;
 
 use crate::Tag;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PayResponse {
     /// a second-level url which give you an invoice with a GET request
     /// and an amount
@@ -26,6 +35,7 @@ pub struct PayResponse {
     /// Optional, if true, the service allows comments
     /// the number is the max length of the comment
     #[serde(rename = "commentAllowed")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub comment_allowed: Option<u32>,
 
     /// Optional, if true, the service allows nostr zaps
@@ -47,18 +57,187 @@ impl PayResponse {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LnURLPayInvoice {
     /// Encoded bolt 11 invoice
     pub pr: String,
+    /// Optional, if present, can be used to display a message to the user
+    /// after the payment has been completed
+    #[serde(rename = "successAction")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    success_action: Option<SuccessActionParams>,
 }
 
 impl LnURLPayInvoice {
     pub fn new(invoice: String) -> Self {
-        Self { pr: invoice }
+        Self {
+            pr: invoice,
+            success_action: None,
+        }
     }
 
     pub fn invoice(&self) -> &str {
         self.pr.as_str()
+    }
+
+    pub fn success_action(&self) -> Option<SuccessAction> {
+        self.success_action.clone().map(SuccessAction::from_params)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SuccessAction {
+    Message(String),
+    Url { url: Url, description: String },
+    AES(AesParams),
+    Unknown(SuccessActionParams),
+}
+
+impl SuccessAction {
+    pub fn tag(&self) -> &str {
+        match self {
+            SuccessAction::Message(_) => "message",
+            SuccessAction::Url { .. } => "url",
+            SuccessAction::AES(_) => "aes",
+            SuccessAction::Unknown(params) => params.tag.as_str(),
+        }
+    }
+
+    pub fn into_params(self) -> SuccessActionParams {
+        match self {
+            SuccessAction::Message(message) => SuccessActionParams {
+                tag: "message".to_string(),
+                message: Some(message),
+                url: None,
+                description: None,
+                ciphertext: None,
+                iv: None,
+            },
+            SuccessAction::Url { url, description } => SuccessActionParams {
+                tag: "url".to_string(),
+                message: None,
+                url: Some(url),
+                description: Some(description),
+                ciphertext: None,
+                iv: None,
+            },
+            SuccessAction::AES(params) => SuccessActionParams {
+                tag: "aes".to_string(),
+                message: None,
+                url: None,
+                description: Some(params.description),
+                ciphertext: Some(params.ciphertext),
+                iv: Some(params.iv),
+            },
+            SuccessAction::Unknown(params) => params,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct AesParams {
+    pub description: String,
+    pub ciphertext: String,
+    pub iv: String,
+}
+
+impl AesParams {
+    pub fn new(description: String, text: &str, preimage: &[u8; 32]) -> anyhow::Result<AesParams> {
+        let iv = secp256k1::rand::random::<[u8; 16]>();
+        let cipher = Aes256CbcEnc::new(preimage.into(), &iv.into());
+        let encrypted: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
+        let ciphertext = base64::encode(encrypted);
+
+        let iv = base64::encode(iv);
+        Ok(AesParams {
+            description,
+            ciphertext,
+            iv,
+        })
+    }
+
+    pub fn decrypt(&self, preimage: &[u8; 32]) -> anyhow::Result<String> {
+        // decode base64
+        let iv = base64::decode(&self.iv)?;
+        let ciphertext = base64::decode(&self.ciphertext)?;
+
+        // check iv length
+        if iv.len() != 16 {
+            return Err(anyhow::anyhow!("iv length is not 16"));
+        }
+        // turn into generic array
+        let iv: [u8; 16] = iv.try_into().unwrap();
+
+        // decrypt
+        let cipher = Aes256CbcDec::new(preimage.into(), &iv.into());
+        let decrypted: Vec<u8> = cipher
+            .decrypt_padded_vec_mut::<Pkcs7>(&ciphertext)
+            .map_err(|_| anyhow::anyhow!("decryption failed"))?;
+
+        Ok(String::from_utf8(decrypted)?)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SuccessActionParams {
+    pub tag: String,
+    pub message: Option<String>,
+    pub url: Option<Url>,
+    pub description: Option<String>,
+    pub ciphertext: Option<String>,
+    pub iv: Option<String>,
+}
+
+impl SuccessAction {
+    pub fn from_params(params: SuccessActionParams) -> Self {
+        match params.tag.as_str() {
+            "message" => {
+                if params.message.is_none() {
+                    return SuccessAction::Unknown(params);
+                }
+                SuccessAction::Message(params.message.unwrap())
+            }
+            "url" => {
+                if params.url.is_none() || params.description.is_none() {
+                    return SuccessAction::Unknown(params);
+                }
+                SuccessAction::Url {
+                    url: params.url.unwrap(),
+                    description: params.description.unwrap(),
+                }
+            }
+            "aes" => {
+                if params.description.is_none()
+                    || params.ciphertext.is_none()
+                    || params.iv.is_none()
+                {
+                    return SuccessAction::Unknown(params);
+                }
+
+                SuccessAction::AES(AesParams {
+                    description: params.description.unwrap(),
+                    ciphertext: params.ciphertext.unwrap(),
+                    iv: params.iv.unwrap(),
+                })
+            }
+            _ => SuccessAction::Unknown(params),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_encrypt_decrypt() {
+        let description = "test_description".to_string();
+        let text = "hello world".to_string();
+        let preimage = [1u8; 32];
+
+        let params = AesParams::new(description.clone(), &text, &preimage).unwrap();
+
+        let decrypted = params.decrypt(&preimage).unwrap();
+        assert_eq!(decrypted, text);
     }
 }

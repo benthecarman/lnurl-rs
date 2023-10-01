@@ -236,6 +236,44 @@ mod tests {
 
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     #[tokio::test]
+    async fn test_get_invoice_with_comment() {
+        let url = "https://getalby.com/.well-known/lnurlp/nvk";
+        let (blocking_client, async_client) = setup_clients().await;
+
+        let res = blocking_client.make_request(url).unwrap();
+        let res_async = async_client.make_request(url).await.unwrap();
+
+        // check res_async
+        match res_async {
+            LnUrlPayResponse(_) => {}
+            _ => panic!("Wrong response type"),
+        }
+
+        if let LnUrlPayResponse(pay) = res {
+            let msats = 1_000_000;
+
+            let comment = "test comment".to_string();
+
+            let invoice = blocking_client
+                .get_invoice(&pay, msats, None, Some(&comment))
+                .unwrap();
+            let invoice_async = async_client
+                .get_invoice(&pay, msats, None, Some(&comment))
+                .await
+                .unwrap();
+
+            let invoice = Bolt11Invoice::from_str(invoice.invoice()).unwrap();
+            let invoice_async = Bolt11Invoice::from_str(invoice_async.invoice()).unwrap();
+
+            assert_eq!(invoice.amount_milli_satoshis(), Some(msats));
+            assert_eq!(invoice_async.amount_milli_satoshis(), Some(msats));
+        } else {
+            panic!("Wrong response type");
+        }
+    }
+
+    #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
+    #[tokio::test]
     async fn test_get_invoice_ln_addr() {
         let ln_addr = LightningAddress::from_str("ben@opreturnbot.com").unwrap();
         let (blocking_client, async_client) = setup_clients().await;
