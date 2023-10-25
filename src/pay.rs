@@ -61,6 +61,8 @@ impl PayResponse {
 pub struct LnURLPayInvoice {
     /// Encoded bolt 11 invoice
     pub pr: String,
+    /// If this invoice is a hodl invoice
+    pub hodl_invoice: Option<bool>,
     /// Optional, if present, can be used to display a message to the user
     /// after the payment has been completed
     #[serde(rename = "successAction")]
@@ -72,6 +74,7 @@ impl LnURLPayInvoice {
     pub fn new(invoice: String) -> Self {
         Self {
             pr: invoice,
+            hodl_invoice: None,
             success_action: None,
         }
     }
