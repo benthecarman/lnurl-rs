@@ -1,3 +1,4 @@
+use crate::lightning_address::LightningAddress;
 use crate::Error;
 use bech32::{ToBase32, Variant};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -18,6 +19,12 @@ impl LnUrl {
 
     pub fn is_lnurl_auth(&self) -> bool {
         self.url.contains("tag=login") && self.url.contains("k1=")
+    }
+
+    pub fn lightning_address(&self) -> Option<LightningAddress> {
+        let url = url::Url::from_str(&self.url).ok()?;
+        let local_part = url.path().strip_prefix("/.well-known/lnurlp/")?;
+        LightningAddress::from_domain_and_local_part(url.host_str()?, local_part).ok()
     }
 
     #[inline]
@@ -108,5 +115,13 @@ mod tests {
         let str = "https://service.com/api?q=3fc3645b439ce8e7f2553a69e5267081d96dcd340693afabe04be7b0ccd178df&k1=3fc3645b439ce8e7f2553a69e5267081d96dcd340693afabe04be7b0ccd178df";
         let lnurl = LnUrl::from_url(str.to_string());
         assert!(!lnurl.is_lnurl_auth());
+    }
+
+    #[test]
+    fn lnurl_to_lightning_address() {
+        let lightning_address = LightningAddress::from_str("me@benthecarman.com").unwrap();
+        let lnurl = lightning_address.lnurl();
+
+        assert_eq!(lnurl.lightning_address(), Some(lightning_address));
     }
 }

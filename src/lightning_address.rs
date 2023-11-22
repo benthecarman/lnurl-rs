@@ -17,6 +17,11 @@ impl LightningAddress {
             .map_err(|_| Error::InvalidLightningAddress)
     }
 
+    pub fn from_domain_and_local_part(domain: &str, local_part: &str) -> Result<Self, Error> {
+        let string = format!("{}@{}", local_part, domain);
+        LightningAddress::new(&string)
+    }
+
     #[inline]
     pub fn lnurlp_url(&self) -> String {
         format!(
