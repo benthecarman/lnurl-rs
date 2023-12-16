@@ -145,7 +145,8 @@ mod tests {
     use crate::{AsyncClient, BlockingClient, Builder, Response};
     use bitcoin::secp256k1::PublicKey;
     use lightning_invoice::Bolt11Invoice;
-    use nostr::{EventBuilder, Keys};
+    use nostr::prelude::ZapRequestData;
+    use nostr::{EventBuilder, JsonUtil, Keys};
     use std::str::FromStr;
 
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
@@ -211,9 +212,15 @@ mod tests {
 
             let keys = Keys::generate();
             let event = {
-                EventBuilder::new_zap_request::<String>(keys.public_key(), None, Some(msats), None)
-                    .to_event(&keys)
-                    .unwrap()
+                let data = ZapRequestData {
+                    public_key: keys.public_key(),
+                    relays: vec![],
+                    amount: Some(msats),
+                    lnurl: None,
+                    event_id: None,
+                    event_coordinate: None,
+                };
+                EventBuilder::new_zap_request(data).to_event(&keys).unwrap()
             };
 
             let invoice = blocking_client

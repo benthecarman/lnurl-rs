@@ -1,6 +1,6 @@
 use anyhow::anyhow;
+use bitcoin::bip32::{ChildNumber, DerivationPath};
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
-use bitcoin::util::bip32::{ChildNumber, DerivationPath};
 use std::convert::TryInto;
 use std::str::FromStr;
 use url::Url;
@@ -16,7 +16,7 @@ pub fn get_derivation_path(hashing_key: [u8; 32], url: &Url) -> anyhow::Result<D
 
     // and then hashed using hmacSha256(hashingKey, full service domain name)
     engine.input(host.to_string().as_bytes());
-    let derivation_mat = Hmac::<sha256::Hash>::from_engine(engine).into_inner();
+    let derivation_mat = Hmac::<sha256::Hash>::from_engine(engine);
 
     // First 16 bytes are taken from resulting hash and then turned into a sequence of 4 u32 values
     let uints: [u32; 4] = (0..4)
@@ -39,8 +39,8 @@ pub fn get_derivation_path(hashing_key: [u8; 32], url: &Url) -> anyhow::Result<D
 
 #[cfg(test)]
 mod test {
+    use bitcoin::bip32::{ChildNumber, DerivationPath};
     use bitcoin::hashes::hex::FromHex;
-    use bitcoin::util::bip32::{ChildNumber, DerivationPath};
     use std::str::FromStr;
     use url::Url;
 

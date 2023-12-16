@@ -3,7 +3,7 @@ use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
-use bitcoin::{secp256k1, XOnlyPublicKey};
+use bitcoin::key::XOnlyPublicKey;
 use cbc::{Decryptor, Encryptor};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -53,7 +53,7 @@ impl PayResponse {
     }
 
     pub fn metadata_hash(&self) -> [u8; 32] {
-        Sha256::hash(self.metadata.as_bytes()).into_inner()
+        Sha256::hash(self.metadata.as_bytes()).to_byte_array()
     }
 }
 
@@ -146,7 +146,7 @@ pub struct AesParams {
 
 impl AesParams {
     pub fn new(description: String, text: &str, preimage: &[u8; 32]) -> anyhow::Result<AesParams> {
-        let iv = secp256k1::rand::random::<[u8; 16]>();
+        let iv = bitcoin::secp256k1::rand::random::<[u8; 16]>();
         let cipher = Aes256CbcEnc::new(preimage.into(), &iv.into());
         let encrypted: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
         let ciphertext = base64::encode(encrypted);
