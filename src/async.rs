@@ -14,7 +14,7 @@ use crate::{decode_ln_url_response, Builder, Error};
 
 #[derive(Debug, Clone)]
 pub struct AsyncClient {
-    client: Client,
+    pub client: Client,
 }
 
 impl AsyncClient {
