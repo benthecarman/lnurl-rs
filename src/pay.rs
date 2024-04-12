@@ -1,6 +1,8 @@
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
+use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+use base64::Engine;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::hashes::Hash;
 use bitcoin::key::XOnlyPublicKey;
@@ -149,9 +151,9 @@ impl AesParams {
         let iv = bitcoin::secp256k1::rand::random::<[u8; 16]>();
         let cipher = Aes256CbcEnc::new(preimage.into(), &iv.into());
         let encrypted: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
-        let ciphertext = base64::encode(encrypted);
+        let ciphertext = BASE64_STANDARD.encode(encrypted);
 
-        let iv = base64::encode(iv);
+        let iv = BASE64_STANDARD.encode(iv);
         Ok(AesParams {
             description,
             ciphertext,
@@ -161,8 +163,8 @@ impl AesParams {
 
     pub fn decrypt(&self, preimage: &[u8; 32]) -> anyhow::Result<String> {
         // decode base64
-        let iv = base64::decode(&self.iv)?;
-        let ciphertext = base64::decode(&self.ciphertext)?;
+        let iv = BASE64_STANDARD.decode(&self.iv)?;
+        let ciphertext = BASE64_STANDARD.decode(&self.ciphertext)?;
 
         // check iv length
         if iv.len() != 16 {

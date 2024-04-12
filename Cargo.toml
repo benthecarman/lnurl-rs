@@ -27,7 +27,7 @@ ureq = { version = "2.5.0", features = ["json"], optional = true }
 reqwest = { version = "0.12.3", optional = true, default-features = false, features = ["json"] }
 email_address = "0.2.4"
 url = { version = "2.3.1", features = ["serde"] }
-base64 = "0.13.1"
+base64 = "0.22.0"
 cbc = { version = "0.1", features = ["alloc"] }
 aes = { version = "0.8" }
 
