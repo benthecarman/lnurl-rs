@@ -1,6 +1,5 @@
 use crate::lightning_address::LightningAddress;
 use crate::Error;
-use bech32::{ToBase32, Variant};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -13,8 +12,8 @@ pub struct LnUrl {
 impl LnUrl {
     #[inline]
     pub fn encode(&self) -> String {
-        let base32 = self.url.as_bytes().to_base32();
-        bech32::encode("lnurl", base32, Variant::Bech32).unwrap()
+        bech32::encode::<bech32::Bech32>(bech32::Hrp::parse("lnurl").unwrap(), self.url.as_bytes())
+            .unwrap()
     }
 
     pub fn is_lnurl_auth(&self) -> bool {
@@ -68,8 +67,7 @@ impl FromStr for LnUrl {
 
     fn from_str(s: &str) -> Result<Self, Error> {
         if s.to_lowercase().starts_with("lnurl") {
-            let (_, data, _) = bech32::decode(s).map_err(|_| Error::InvalidLnUrl)?;
-            let bytes = bech32::FromBase32::from_base32(&data).map_err(|_| Error::InvalidLnUrl)?;
+            let (_, bytes) = bech32::decode(s).map_err(|_| Error::InvalidLnUrl)?;
             let url = String::from_utf8(bytes).map_err(|_| Error::InvalidLnUrl)?;
             Ok(LnUrl { url })
         } else {
