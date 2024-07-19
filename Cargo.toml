@@ -25,7 +25,7 @@ bech32 = "0.11"
 bitcoin = { version = "0.30.2", default-features = false, features = ["serde", "rand"] }
 ureq = { version = "2.5.0", features = ["json"], optional = true }
 reqwest = { version = "0.12.3", optional = true, default-features = false, features = ["json"] }
-email_address = "0.2.4"
+email_address = "=0.2.5"
 url = { version = "2.3.1", features = ["serde"] }
 base64 = "0.22.0"
 cbc = { version = "0.1", features = ["alloc"] }
