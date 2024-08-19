@@ -1,3 +1,4 @@
+#![allow(clippy::large_enum_variant)]
 #![allow(clippy::result_large_err)]
 
 pub mod api;
@@ -81,9 +82,6 @@ pub enum Error {
     /// Error during ureq HTTP request
     #[cfg(feature = "blocking")]
     Ureq(ureq::Error),
-    /// Transport error during the ureq HTTP call
-    #[cfg(feature = "blocking")]
-    UreqTransport(ureq::Transport),
     /// Error during reqwest HTTP request
     #[cfg(any(feature = "async", feature = "async-https"))]
     Reqwest(reqwest::Error),
@@ -91,16 +89,10 @@ pub enum Error {
     HttpResponse(u16),
     /// IO error during ureq response read
     Io(io::Error),
-    /// No header found in ureq response
-    NoHeader,
     /// Error decoding JSON
     Json(serde_json::Error),
     /// Invalid Response
     InvalidResponse,
-    /// Invalid number returned
-    Parsing(std::num::ParseIntError),
-    /// Invalid Bitcoin data returned
-    BitcoinEncoding(bitcoin::consensus::encode::Error),
     /// Other error
     Other(String),
 }
@@ -125,13 +117,10 @@ macro_rules! impl_error {
 }
 
 impl std::error::Error for Error {}
-#[cfg(feature = "blocking")]
-impl_error!(::ureq::Transport, UreqTransport, Error);
 #[cfg(any(feature = "async", feature = "async-https"))]
 impl_error!(::reqwest::Error, Reqwest, Error);
 impl_error!(io::Error, Io, Error);
 impl_error!(serde_json::Error, Json, Error);
-impl_error!(std::num::ParseIntError, Parsing, Error);
 
 #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
 #[cfg(test)]
