@@ -101,8 +101,6 @@ pub enum Error {
     Parsing(std::num::ParseIntError),
     /// Invalid Bitcoin data returned
     BitcoinEncoding(bitcoin::consensus::encode::Error),
-    /// Invalid Hex data returned
-    Hex(bitcoin::hashes::hex::Error),
     /// Other error
     Other(String),
 }
@@ -134,7 +132,6 @@ impl_error!(::reqwest::Error, Reqwest, Error);
 impl_error!(io::Error, Io, Error);
 impl_error!(serde_json::Error, Json, Error);
 impl_error!(std::num::ParseIntError, Parsing, Error);
-impl_error!(bitcoin::hashes::hex::Error, Hex, Error);
 
 #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
 #[cfg(test)]
