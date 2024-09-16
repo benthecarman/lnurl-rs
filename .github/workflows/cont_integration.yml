@@ -31,6 +31,18 @@ jobs:
     - run: cargo check --verbose --no-default-features --features=blocking
     - run: cargo check --verbose --no-default-features --features=async
     - run: cargo check --verbose --no-default-features --features=async-https
+    - name: Test bitcoin 0.31.2
+      run: cargo update --package bitcoin --precise 0.31.2
+    - run: cargo test --verbose --all-features
+    - run: cargo check --verbose --no-default-features --features=blocking
+    - run: cargo check --verbose --no-default-features --features=async
+    - run: cargo check --verbose --no-default-features --features=async-https
+    - name: Test bitcoin 0.30.2
+      run: cargo update --package bitcoin --precise 0.30.2
+    - run: cargo test --verbose --all-features
+    - run: cargo check --verbose --no-default-features --features=blocking
+    - run: cargo check --verbose --no-default-features --features=async
+    - run: cargo check --verbose --no-default-features --features=async-https
     - name: Clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
     - run: cargo clippy --all-targets --no-default-features --features=blocking -- -D warnings
