@@ -8,7 +8,7 @@ use reqwest::Client;
 use crate::api::*;
 use crate::channel::ChannelResponse;
 use crate::lnurl::LnUrl;
-use crate::pay::{LnURLPayInvoice, PayResponse};
+use crate::pay::{LnURLPayInvoice, PayResponse, VerifyResponse};
 use crate::withdraw::WithdrawalResponse;
 use crate::{Builder, Error};
 
@@ -17,7 +17,19 @@ pub struct AsyncClient {
     pub client: Client,
 }
 
+impl Default for AsyncClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AsyncClient {
+    pub fn new() -> Self {
+        Self {
+            client: Client::new(),
+        }
+    }
+
     /// build an async client from a builder
     pub fn from_builder(builder: Builder) -> Result<Self, Error> {
         let mut client_builder = Client::builder();
@@ -88,11 +100,21 @@ impl AsyncClient {
         Ok(resp.error_for_status()?.json().await?)
     }
 
+    pub async fn verify(&self, url: &str) -> Result<VerifyResponse, Error> {
+        let resp = self.client.get(url).send().await?;
+
+        let rsp: Response<VerifyResponse> = resp.error_for_status()?.json().await?;
+        match rsp {
+            Response::Error { reason } => Err(Error::Other(reason)),
+            Response::Ok(r) => Ok(r),
+        }
+    }
+
     pub async fn do_withdrawal(
         &self,
         withdrawal: &WithdrawalResponse,
         invoice: &str,
-    ) -> Result<Response, Error> {
+    ) -> Result<Response<()>, Error> {
         let symbol = if withdrawal.callback.contains('?') {
             "&"
         } else {
@@ -113,7 +135,7 @@ impl AsyncClient {
         channel: &ChannelResponse,
         node_pubkey: PublicKey,
         private: bool,
-    ) -> Result<Response, Error> {
+    ) -> Result<Response<()>, Error> {
         let symbol = if channel.callback.contains('?') {
             "&"
         } else {
@@ -139,7 +161,7 @@ impl AsyncClient {
         lnurl: LnUrl,
         sig: Signature,
         key: PublicKey,
-    ) -> Result<Response, Error> {
+    ) -> Result<Response<()>, Error> {
         let url = format!("{}&sig={}&key={}", lnurl.url, sig, key);
 
         let resp = self.client.get(url).send().await?;

@@ -98,7 +98,7 @@ impl BlockingClient {
                 match result {
                     Ok(invoice) => Ok(invoice),
                     Err(_) => {
-                        let response = serde_json::from_value::<Response>(json)?;
+                        let response = serde_json::from_value::<Response<()>>(json)?;
                         match response {
                             Response::Error { reason } => Err(Error::Other(reason)),
                             Response::Ok { .. } => unreachable!("Ok response should be an invoice"),
@@ -115,7 +115,7 @@ impl BlockingClient {
         &self,
         withdrawal: &WithdrawalResponse,
         invoice: &str,
-    ) -> Result<Response, Error> {
+    ) -> Result<Response<()>, Error> {
         let symbol = if withdrawal.callback.contains('?') {
             "&"
         } else {
@@ -141,7 +141,7 @@ impl BlockingClient {
         channel: &ChannelResponse,
         node_pubkey: PublicKey,
         private: bool,
-    ) -> Result<Response, Error> {
+    ) -> Result<Response<()>, Error> {
         let symbol = if channel.callback.contains('?') {
             "&"
         } else {
@@ -171,7 +171,7 @@ impl BlockingClient {
         lnurl: LnUrl,
         sig: Signature,
         key: PublicKey,
-    ) -> Result<Response, Error> {
+    ) -> Result<Response<()>, Error> {
         let url = format!("{}&sig={}&key={}", lnurl.url, sig, key);
 
         let resp = self.agent.get(&url).call();

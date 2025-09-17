@@ -82,11 +82,16 @@ impl FromStr for Tag {
 /// Example: `{\"status\":\"ERROR\",\"reason\":\"error detail...\"}"`
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(tag = "status")]
-pub enum Response {
+pub enum Response<T> {
     #[serde(rename = "ERROR")]
     Error { reason: String },
     #[serde(rename = "OK")]
-    Ok { event: Option<String> },
+    Ok(T),
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct EventResponse {
+    pub event: Option<String>,
 }
 
 #[cfg(test)]
@@ -104,14 +109,14 @@ mod tests {
             ),
             (
                 r#"{"status":"OK","event":"LOGGEDIN"}"#,
-                Response::Ok {
+                Response::<EventResponse>::Ok(EventResponse {
                     event: Some("LOGGEDIN".to_string()),
-                },
+                }),
             ),
         ];
 
         for test in tests {
-            let resp: Response = serde_json::from_str(test.0).unwrap();
+            let resp: Response<_> = serde_json::from_str(test.0).unwrap();
             assert_eq!(resp, test.1);
         }
     }
@@ -126,9 +131,9 @@ mod tests {
             ),
             (
                 r#"{"status":"OK","event":"LOGGEDIN"}"#,
-                Response::Ok {
+                Response::<EventResponse>::Ok(EventResponse {
                     event: Some("LOGGEDIN".to_string()),
-                },
+                }),
             ),
         ];
 
