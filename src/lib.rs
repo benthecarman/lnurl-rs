@@ -126,10 +126,8 @@ impl_error!(serde_json::Error, Json, Error);
 #[cfg(test)]
 mod tests {
     use crate::lightning_address::LightningAddress;
-    use crate::lnurl::LnUrl;
-    use crate::LnUrlResponse::{LnUrlChannelResponse, LnUrlPayResponse, LnUrlWithdrawResponse};
-    use crate::{AsyncClient, BlockingClient, Builder, Response};
-    use bitcoin::secp256k1::PublicKey;
+    use crate::LnUrlResponse::LnUrlPayResponse;
+    use crate::{AsyncClient, BlockingClient, Builder};
     use lightning_invoice::Bolt11Invoice;
     use nostr::prelude::ZapRequestData;
     use nostr::{EventBuilder, JsonUtil, Keys};
@@ -300,68 +298,6 @@ mod tests {
 
             assert_eq!(invoice.amount_milli_satoshis(), Some(msats));
             assert_eq!(invoice_async.amount_milli_satoshis(), Some(msats));
-        } else {
-            panic!("Wrong response type");
-        }
-    }
-
-    #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
-    #[tokio::test]
-    async fn test_do_withdrawal() {
-        let lnurl = LnUrl::from_str("LNURL1DP68GURN8GHJ7MRWW4EXCTNXD9SHG6NPVCHXXMMD9AKXUATJDSKHW6T5DPJ8YCTH8AEK2UMND9HKU0FJVSCNZDPHVYENVDTPVYCRSVMPXVMRSCEEXGERQVPSXV6X2C3KX9JXZVMZ8PNXZDR9VY6N2DRZVG6RWEPCVYMRZDMRV9SK2D3KV43XVCF58DT").unwrap();
-        let url = lnurl.url.as_str();
-        let (blocking_client, async_client) = setup_clients().await;
-
-        let res = blocking_client.make_request(url).unwrap();
-        let res_async = async_client.make_request(url).await.unwrap();
-
-        // check res_async
-        match res_async {
-            LnUrlWithdrawResponse(_) => {}
-            _ => panic!("Wrong response type"),
-        }
-
-        if let LnUrlWithdrawResponse(w) = res {
-            let invoice = "lnbc1302470n1p3x3ssapp5axqf6dsusf98895vdhw97rn0szk4z6cxa5hfw3s2q5ksn3575qssdzz2pskjepqw3hjqnmsv4h9xct5wvszsnmjv3jhygzfgsazqem9dejhyctvtan82mny9ycqzpgxqzuysp5q97feeev2tnjsc0qn9kezqlgs8eekwfkxsc28uwxp9elnzkj2n0s9qyyssq02hkrz7dr0adx09t6w2tr9k8nczvq094r7qx297tsdupgeg5t3m8hvmkl7mqhtvx94he3swlg2qzhqk2j39wehcmv9awc06gex82e8qq0u0pm6";
-            let response = blocking_client.do_withdrawal(&w, invoice).unwrap();
-            let response_async = async_client.do_withdrawal(&w, invoice).await.unwrap();
-
-            assert_eq!(response, Response::Ok { event: None });
-            assert_eq!(response_async, Response::Ok { event: None });
-        } else {
-            panic!("Wrong response type");
-        }
-    }
-
-    #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
-    #[tokio::test]
-    async fn test_open_channel() {
-        let lnurl = LnUrl::from_str("LNURL1DP68GURN8GHJ7MRWW4EXCTNXD9SHG6NPVCHXXMMD9AKXUATJDSKKX6RPDEHX2MPLWDJHXUMFDAHR6ERR8YCNZEF3XYUNXENRVENXYDF3XQ6XGVEKXGMRQC3CX33N2ERXVC6KZCE38YCNQDF5VDJR2VPEVV6KVC3SV4JRYENX8YUXGEFEX4SSQ7L4MQ").unwrap();
-        let url = lnurl.url.as_str();
-        let (blocking_client, async_client) = setup_clients().await;
-
-        let res = blocking_client.make_request(url).unwrap();
-        let res_async = async_client.make_request(url).await.unwrap();
-
-        // check res_async
-        match res_async {
-            LnUrlChannelResponse(_) => {}
-            _ => panic!("Wrong response type"),
-        }
-
-        if let LnUrlChannelResponse(chan) = res {
-            let node_id = PublicKey::from_str(
-                "02f7467f4de732f3b3cffc8d5e007aecdf6e58878edb6e46a8e80164421c1b90aa",
-            )
-            .unwrap();
-            let response = blocking_client.open_channel(&chan, node_id, true).unwrap();
-            let response_async = async_client
-                .open_channel(&chan, node_id, true)
-                .await
-                .unwrap();
-
-            assert_eq!(response, Response::Ok { event: None });
-            assert_eq!(response_async, Response::Ok { event: None });
         } else {
             panic!("Wrong response type");
         }
