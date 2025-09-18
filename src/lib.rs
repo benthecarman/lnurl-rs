@@ -266,7 +266,7 @@ mod tests {
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     #[tokio::test]
     async fn test_get_invoice_ln_addr() {
-        let ln_addr = LightningAddress::from_str("ben@opreturnbot.com").unwrap();
+        let ln_addr = LightningAddress::from_str("jack@cash.app").unwrap();
         let (blocking_client, async_client) = setup_clients().await;
 
         let res = blocking_client

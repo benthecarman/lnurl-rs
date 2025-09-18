@@ -59,6 +59,16 @@ impl PayResponse {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct VerifyResponse {
+    /// If invoice has been settled
+    pub settled: bool,
+    /// Pre-image of the payment request (when paid)
+    pub preimage: Option<String>,
+    /// Encoded bolt 11 invoice
+    pub pr: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LnURLPayInvoice {
     /// Encoded bolt 11 invoice
@@ -70,6 +80,9 @@ pub struct LnURLPayInvoice {
     #[serde(rename = "successAction")]
     #[serde(skip_serializing_if = "Option::is_none")]
     success_action: Option<SuccessActionParams>,
+    /// LUD-21 verify URL
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verify: Option<String>,
 }
 
 impl LnURLPayInvoice {
@@ -78,6 +91,7 @@ impl LnURLPayInvoice {
             pr: invoice,
             hodl_invoice: None,
             success_action: None,
+            verify: None,
         }
     }
 
@@ -233,6 +247,7 @@ impl SuccessAction {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Response;
 
     #[test]
     fn test_encrypt_decrypt() {
@@ -244,5 +259,43 @@ mod test {
 
         let decrypted = params.decrypt(&preimage).unwrap();
         assert_eq!(decrypted, text);
+    }
+
+    #[test]
+    fn test_parse_verify_settled() {
+        let settled = r#"{
+  "status": "OK",
+  "settled": true,
+  "preimage": "123456...",
+  "pr": "lnbc10..."
+}"#;
+
+        let parsed = serde_json::from_str::<Response<VerifyResponse>>(settled).unwrap();
+        let parsed = match parsed {
+            Response::Error { .. } => panic!("failed to parse"),
+            Response::Ok(p) => p,
+        };
+        assert!(parsed.settled);
+        assert!(parsed.preimage.is_some());
+        assert!(parsed.pr.starts_with("lnbc10"));
+    }
+
+    #[test]
+    fn test_parse_verify_not_settled() {
+        let settled = r#"{
+  "status": "OK",
+  "settled": false,
+  "preimage": null,
+  "pr": "lnbc10..."
+}"#;
+
+        let parsed = serde_json::from_str::<Response<VerifyResponse>>(settled).unwrap();
+        let parsed = match parsed {
+            Response::Error { .. } => panic!("failed to parse"),
+            Response::Ok(p) => p,
+        };
+        assert!(!parsed.settled);
+        assert!(parsed.preimage.is_none());
+        assert!(parsed.pr.starts_with("lnbc10"));
     }
 }
