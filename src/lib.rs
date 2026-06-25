@@ -238,7 +238,7 @@ mod tests {
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     #[tokio::test]
     async fn test_get_invoice_with_comment() {
-        let url = "https://getalby.com/.well-known/lnurlp/nvk";
+        let url = "https://primal.net/.well-known/lnurlp/odell";
         let (blocking_client, async_client) = setup_clients().await;
 
         let res = blocking_client.make_request(url).unwrap();
