@@ -97,7 +97,12 @@ impl AsyncClient {
 
         let resp = self.client.get(&url).send().await?;
 
-        Ok(resp.error_for_status()?.json().await?)
+        let invoice: LnURLPayInvoice = resp.error_for_status()?.json().await?;
+
+        // verify the returned invoice's amount matches the requested amount (LUD-06)
+        invoice.verify_amount(msats)?;
+
+        Ok(invoice)
     }
 
     pub async fn verify(&self, url: &str) -> Result<VerifyResponse, Error> {

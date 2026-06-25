@@ -27,6 +27,8 @@ let res = async_client.make_request(url).await.unwrap();
 
 if let LnUrlPayResponse(pay) = res {
     let msats = 1_000_000;
+    // `get_invoice` verifies that the returned invoice's amount matches `msats`
+    // (per LUD-06), returning an error otherwise.
     let pay_result = async_client.get_invoice(&pay, msats, None, None).await.unwrap();
 
     let invoice = Bolt11Invoice::from_str(&pay_result.invoice()).unwrap();

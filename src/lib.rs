@@ -79,6 +79,16 @@ pub enum Error {
     InvalidComment,
     /// Invalid amount on request
     InvalidAmount,
+    /// The BOLT11 invoice returned by the callback could not be parsed
+    InvalidInvoice(String),
+    /// The BOLT11 invoice amount does not match the requested amount
+    InvoiceAmountMismatch {
+        /// The amount that was requested, in millisatoshis
+        requested_msats: u64,
+        /// The amount encoded in the returned invoice, in millisatoshis,
+        /// or `None` if the invoice did not specify an amount
+        invoice_msats: Option<u64>,
+    },
     /// Error during ureq HTTP request
     #[cfg(feature = "blocking")]
     Ureq(ureq::Error),
@@ -228,7 +238,7 @@ mod tests {
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
     #[tokio::test]
     async fn test_get_invoice_with_comment() {
-        let url = "https://getalby.com/.well-known/lnurlp/nvk";
+        let url = "https://primal.net/.well-known/lnurlp/odell";
         let (blocking_client, async_client) = setup_clients().await;
 
         let res = blocking_client.make_request(url).unwrap();
