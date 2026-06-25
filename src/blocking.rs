@@ -96,7 +96,11 @@ impl BlockingClient {
                 let result = serde_json::from_value::<LnURLPayInvoice>(json.clone());
 
                 match result {
-                    Ok(invoice) => Ok(invoice),
+                    Ok(invoice) => {
+                        // verify the returned invoice's amount matches the requested amount (LUD-06)
+                        invoice.verify_amount(msats)?;
+                        Ok(invoice)
+                    }
                     Err(_) => {
                         let response = serde_json::from_value::<Response<()>>(json)?;
                         match response {

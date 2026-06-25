@@ -79,6 +79,16 @@ pub enum Error {
     InvalidComment,
     /// Invalid amount on request
     InvalidAmount,
+    /// The BOLT11 invoice returned by the callback could not be parsed
+    InvalidInvoice(String),
+    /// The BOLT11 invoice amount does not match the requested amount
+    InvoiceAmountMismatch {
+        /// The amount that was requested, in millisatoshis
+        requested_msats: u64,
+        /// The amount encoded in the returned invoice, in millisatoshis,
+        /// or `None` if the invoice did not specify an amount
+        invoice_msats: Option<u64>,
+    },
     /// Error during ureq HTTP request
     #[cfg(feature = "blocking")]
     Ureq(ureq::Error),
