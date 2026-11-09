@@ -11,7 +11,18 @@ pub struct LightningAddress {
 }
 
 impl LightningAddress {
+    /// Accepts only the LUD-16 character set (plus uppercase ASCII), which is
+    /// stricter than the e-mail grammar and rules out look-alike addresses.
     pub fn new(value: &str) -> Result<Self, Error> {
+        let (local_part, domain) = value
+            .split_once('@')
+            .ok_or(Error::InvalidLightningAddress)?;
+        if local_part.is_empty() || !local_part.bytes().all(is_lud16_username_byte) {
+            return Err(Error::InvalidLightningAddress);
+        }
+        if !is_hostname(domain) {
+            return Err(Error::InvalidLightningAddress);
+        }
         EmailAddress::from_str(value)
             .map(|value| LightningAddress { value })
             .map_err(|_| Error::InvalidLightningAddress)
@@ -35,6 +46,25 @@ impl LightningAddress {
     pub fn lnurl(&self) -> LnUrl {
         LnUrl::from_url(self.lnurlp_url())
     }
+}
+
+fn is_lud16_username_byte(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.')
+}
+
+/// At least two labels of ASCII letters, digits and inner hyphens.
+fn is_hostname(domain: &str) -> bool {
+    let labels: Vec<&str> = domain.split('.').collect();
+    labels.len() >= 2
+        && labels.iter().all(|label| {
+            !label.is_empty()
+                && label.len() <= 63
+                && label
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+                && !label.starts_with('-')
+                && !label.ends_with('-')
+        })
 }
 
 impl FromStr for LightningAddress {
@@ -103,6 +133,59 @@ mod test {
         assert!(LightningAddress::from_str("invalid").is_err());
         assert!(LightningAddress::from_str("####").is_err());
         assert!(LightningAddress::from_str("LNURL1DP68GURN8GHJ7UM9WFMXJCM99E3K7MF0V9CXJ0M385EKVCENXC6R2C35XVUKXEFCV5MKVV34X5EKZD3EV56NYD3HXQURZEPEXEJXXEPNXSCRVWFNV9NXZCN9XQ6XYEFHVGCXXCMYXYMNSERXFQ5FNS").is_err());
+    }
+
+    #[test]
+    fn test_accepts_lud16_character_set() {
+        for addr in [
+            "ben@opreturnbot.com",
+            "first.last_name-1@pay.example.co.uk",
+            "Ben@OpReturnBot.com",
+        ] {
+            assert!(LightningAddress::from_str(addr).is_ok(), "{}", addr);
+        }
+    }
+
+    #[test]
+    fn test_rejects_hidden_and_lookalike_characters() {
+        for addr in [
+            // right-to-left override reverses the displayed text
+            "ben\u{202E}moc.tobnruterpo@second.tech",
+            "ben@\u{202E}moc.tobnruterpo.com",
+            // zero-width space, zero-width joiner, byte order mark
+            "be\u{200B}n@opreturnbot.com",
+            "be\u{200D}n@opreturnbot.com",
+            "\u{FEFF}ben@opreturnbot.com",
+            "ben@opreturn\u{200B}bot.com",
+            // Kelvin sign and Cyrillic a look like ASCII letters
+            "\u{212A}en@opreturnbot.com",
+            "ben@opreturnbot.\u{0441}om",
+            "b\u{0430}n@opreturnbot.com",
+        ] {
+            assert!(LightningAddress::from_str(addr).is_err(), "{:?}", addr);
+        }
+    }
+
+    #[test]
+    fn test_rejects_malformed() {
+        for addr in [
+            "",
+            "ben",
+            "@opreturnbot.com",
+            "ben@",
+            "ben@opreturnbot",
+            "ben@@opreturnbot.com",
+            "ben@-opreturnbot.com",
+            "ben@opreturnbot-.com",
+            "ben@opreturnbot..com",
+            "ben@opreturnbot.com/.well-known",
+            "ben@opreturnbot.com:443",
+            "b en@opreturnbot.com",
+            "ben+tag@opreturnbot.com",
+            "\"ben\"@opreturnbot.com",
+        ] {
+            assert!(LightningAddress::from_str(addr).is_err(), "{:?}", addr);
+        }
     }
 
     #[test]
