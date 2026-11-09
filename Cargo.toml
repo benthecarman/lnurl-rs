@@ -21,21 +21,21 @@ path = "src/lib.rs"
 anyhow = "1.0.70"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-bech32 = "0.11"
-bitcoin = { version = "0.32.2", default-features = false, features = ["std", "serde", "rand"] }
+bech32 = "0.12"
+bitcoin = { version = "0.32.2", default-features = false, features = ["std", "serde", "rand-std"] }
 ureq = { version = "2.5.0", features = ["json"], optional = true }
 reqwest = { version = "0.12.3", optional = true, default-features = false, features = ["json"] }
-email_address = "=0.2.5"
+email_address = "0.2.9"
 url = { version = "2.3.1", features = ["serde"] }
-base64 = "0.22.0"
-cbc = { version = "0.1", features = ["alloc"] }
-aes = { version = "0.8" }
+base64 = "0.23"
+cbc = { version = "0.2", features = ["alloc"] }
+aes = { version = "0.9" }
 
 [dev-dependencies]
 tokio = { version = "1.20.1", features = ["full"] }
 bitcoin = { version = "0.32.2", features = ["serde", "std"] }
-lightning-invoice = { version = "0.32.0", features = ["std", "serde"] }
-nostr = { version = "0.25.0", default-features = false, features = ["std"] }
+lightning-invoice = { version = "0.34.1", features = ["std", "serde"] }
+nostr = { version = "0.45.7", default-features = false, features = ["std", "os-rng"] }
 
 [features]
 default = ["blocking", "async", "async-https"]

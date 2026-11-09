@@ -1,5 +1,5 @@
 use aes::cipher::block_padding::Pkcs7;
-use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use aes::cipher::{BlockModeDecrypt, BlockModeEncrypt, KeyIvInit};
 use aes::Aes256;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
@@ -257,7 +257,7 @@ impl AesParams {
     pub fn new(description: String, text: &str, preimage: &[u8; 32]) -> anyhow::Result<AesParams> {
         let iv = bitcoin::secp256k1::rand::random::<[u8; 16]>();
         let cipher = Aes256CbcEnc::new(preimage.into(), &iv.into());
-        let encrypted: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(text.as_bytes());
+        let encrypted: Vec<u8> = cipher.encrypt_padded_vec::<Pkcs7>(text.as_bytes());
         let ciphertext = BASE64_STANDARD.encode(encrypted);
 
         let iv = BASE64_STANDARD.encode(iv);
@@ -283,7 +283,7 @@ impl AesParams {
         // decrypt
         let cipher = Aes256CbcDec::new(preimage.into(), &iv.into());
         let decrypted: Vec<u8> = cipher
-            .decrypt_padded_vec_mut::<Pkcs7>(&ciphertext)
+            .decrypt_padded_vec::<Pkcs7>(&ciphertext)
             .map_err(|_| anyhow::anyhow!("decryption failed"))?;
 
         Ok(String::from_utf8(decrypted)?)

@@ -139,8 +139,7 @@ mod tests {
     use crate::LnUrlResponse::LnUrlPayResponse;
     use crate::{AsyncClient, BlockingClient, Builder};
     use lightning_invoice::Bolt11Invoice;
-    use nostr::prelude::ZapRequestData;
-    use nostr::{EventBuilder, JsonUtil, Keys};
+    use nostr::prelude::{FinalizeEvent, Keys, ZapRequestData};
     use std::str::FromStr;
 
     #[cfg(all(feature = "blocking", any(feature = "async", feature = "async-https")))]
@@ -205,17 +204,10 @@ mod tests {
             let msats = 1_000_000;
 
             let keys = Keys::generate();
-            let event = {
-                let data = ZapRequestData {
-                    public_key: keys.public_key(),
-                    relays: vec![],
-                    amount: Some(msats),
-                    lnurl: None,
-                    event_id: None,
-                    event_coordinate: None,
-                };
-                EventBuilder::new_zap_request(data).to_event(&keys).unwrap()
-            };
+            let event = ZapRequestData::new(keys.public_key(), [])
+                .amount(msats)
+                .finalize(&keys)
+                .unwrap();
 
             let invoice = blocking_client
                 .get_invoice(&pay, msats, Some(event.as_json()), None)
