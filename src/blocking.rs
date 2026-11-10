@@ -90,7 +90,7 @@ impl BlockingClient {
         match resp {
             Ok(resp) => {
                 let json: serde_json::Value = resp.into_json()?;
-                decode_invoice_response(json, msats)
+                decode_invoice_response(json, &pay.callback, msats)
             }
             Err(ureq::Error::Status(code, _)) => Err(Error::HttpResponse(code)),
             Err(e) => Err(Error::Ureq(e)),

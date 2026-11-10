@@ -93,7 +93,7 @@ impl AsyncClient {
         let resp = self.client.get(url).send().await?;
 
         let json: serde_json::Value = resp.error_for_status()?.json().await?;
-        decode_invoice_response(json, msats)
+        decode_invoice_response(json, &pay.callback, msats)
     }
 
     pub async fn verify(&self, url: &str) -> Result<VerifyResponse, Error> {

@@ -89,6 +89,8 @@ pub enum Error {
         /// or `None` if the invoice did not specify an amount
         invoice_msats: Option<u64>,
     },
+    /// The success action's URL is not on the callback's domain (LUD-09)
+    InvalidSuccessAction,
     /// Error during ureq HTTP request
     #[cfg(feature = "blocking")]
     Ureq(ureq::Error),
