@@ -1,8 +1,38 @@
 use crate::lightning_address::LightningAddress;
 use crate::Error;
+use bech32::primitives::decode::CheckedHrpstring;
+use bech32::{Checksum, Fe1024, Fe32, Hrp};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+
+/// The bech32 checksum without its 1023-character length limit.
+///
+/// LUD-01 does not cap the length of an LNURL, and `encode` cannot fail, so a
+/// long URL must still encode and decode rather than panic or be rejected.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum LnUrlBech32 {}
+
+impl Checksum for LnUrlBech32 {
+    type MidstateRepr = u32;
+    type CorrectionField = Fe1024;
+    const ROOT_GENERATOR: Self::CorrectionField = Fe1024::new([Fe32::P, Fe32::X]);
+    const ROOT_EXPONENTS: core::ops::RangeInclusive<usize> = 24..=26;
+
+    const CODE_LENGTH: usize = usize::MAX;
+    const CHECKSUM_LENGTH: usize = 6;
+    // Copied from BIP-173, the same as `bech32::Bech32`.
+    const GENERATOR_SH: [u32; 5] = [
+        0x3b6a_57b2,
+        0x2650_8e6d,
+        0x1ea1_19fa,
+        0x3d42_33dd,
+        0x2a14_62b3,
+    ];
+    const TARGET_RESIDUE: u32 = 1;
+}
+
+const LNURL_HRP: Hrp = Hrp::parse_unchecked("lnurl");
 
 #[derive(Debug, PartialEq, Clone, Ord, PartialOrd, Eq, Hash)]
 pub struct LnUrl {
@@ -12,8 +42,8 @@ pub struct LnUrl {
 impl LnUrl {
     #[inline]
     pub fn encode(&self) -> String {
-        bech32::encode::<bech32::Bech32>(bech32::Hrp::parse("lnurl").unwrap(), self.url.as_bytes())
-            .unwrap()
+        bech32::encode::<LnUrlBech32>(LNURL_HRP, self.url.as_bytes())
+            .expect("LnUrlBech32 has no length limit")
     }
 
     pub fn is_lnurl_auth(&self) -> bool {
@@ -67,8 +97,10 @@ impl FromStr for LnUrl {
 
     fn from_str(s: &str) -> Result<Self, Error> {
         if s.to_lowercase().starts_with("lnurl") {
-            let (_, bytes) = bech32::decode(s).map_err(|_| Error::InvalidLnUrl)?;
-            let url = String::from_utf8(bytes).map_err(|_| Error::InvalidLnUrl)?;
+            let checked =
+                CheckedHrpstring::new::<LnUrlBech32>(s).map_err(|_| Error::InvalidLnUrl)?;
+            let url = String::from_utf8(checked.byte_iter().collect())
+                .map_err(|_| Error::InvalidLnUrl)?;
             Ok(LnUrl { url })
         } else {
             Err(Error::InvalidLnUrl)
@@ -98,6 +130,24 @@ mod tests {
 
         let lnurl = LnUrl::decode(str.to_string()).unwrap();
         assert_eq!(lnurl.url, expected);
+    }
+
+    #[test]
+    fn long_url_round_trip() {
+        // longer than the 1023-character limit of `bech32::Bech32`
+        let url = format!("https://service.com/{}", "x".repeat(2000));
+        let encoded = LnUrl::from_url(url.clone()).to_string();
+        assert!(encoded.len() > 1023);
+        assert_eq!(LnUrl::from_str(&encoded).unwrap().url, url);
+        assert_eq!(LnUrl::from_str(&encoded.to_uppercase()).unwrap().url, url);
+    }
+
+    #[test]
+    fn decode_rejects_bad_checksum() {
+        let mut encoded = LnUrl::from_url("https://service.com/api".to_string()).encode();
+        let last = encoded.pop().unwrap();
+        encoded.push(if last == 'q' { 'p' } else { 'q' });
+        assert!(LnUrl::from_str(&encoded).is_err());
     }
 
     #[test]
