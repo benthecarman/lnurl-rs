@@ -89,6 +89,8 @@ pub enum Error {
         /// or `None` if the invoice did not specify an amount
         invoice_msats: Option<u64>,
     },
+    /// The success action's URL is not on the callback's domain (LUD-09)
+    InvalidSuccessAction,
     /// Error during ureq HTTP request
     #[cfg(feature = "blocking")]
     Ureq(ureq::Error),
@@ -126,7 +128,68 @@ macro_rules! impl_error {
     };
 }
 
+/// Append `params` to the query string of `base`, percent-encoding each value
+/// so that user- or server-supplied text cannot add, drop or alter parameters.
+#[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+pub(crate) fn callback_url(
+    base: &str,
+    params: &[(&str, &str)],
+) -> Result<url::Url, url::ParseError> {
+    let mut url = url::Url::parse(base)?;
+    url.query_pairs_mut().extend_pairs(params);
+    Ok(url)
+}
+
 impl std::error::Error for Error {}
+
+#[cfg(feature = "blocking")]
+#[cfg(test)]
+mod builder_tests {
+    use super::{Builder, Error};
+
+    #[test]
+    fn test_invalid_proxy_is_an_error() {
+        let result = Builder::default().proxy("ftp://x:1").build_blocking();
+        assert!(matches!(result, Err(Error::Ureq(_))));
+    }
+}
+
+#[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+#[cfg(test)]
+mod callback_url_tests {
+    use super::callback_url;
+
+    #[test]
+    fn test_reserved_characters_stay_in_their_parameter() {
+        let comment = "hi & amount=1 #tag +100% ?";
+        let url = callback_url(
+            "https://a.com/cb",
+            &[("amount", "1000"), ("comment", comment)],
+        )
+        .unwrap();
+
+        assert_eq!(url.fragment(), None);
+        let pairs: Vec<(String, String)> = url.query_pairs().into_owned().collect();
+        assert_eq!(
+            pairs,
+            vec![
+                ("amount".to_string(), "1000".to_string()),
+                ("comment".to_string(), comment.to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_keeps_existing_query() {
+        let url = callback_url("https://a.com/cb?id=7", &[("amount", "1000")]).unwrap();
+        assert_eq!(url.as_str(), "https://a.com/cb?id=7&amount=1000");
+    }
+
+    #[test]
+    fn test_rejects_invalid_base() {
+        assert!(callback_url("not a url", &[("amount", "1000")]).is_err());
+    }
+}
 #[cfg(any(feature = "async", feature = "async-https"))]
 impl_error!(::reqwest::Error, Reqwest, Error);
 impl_error!(io::Error, Io, Error);

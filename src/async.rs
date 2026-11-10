@@ -8,9 +8,9 @@ use reqwest::Client;
 use crate::api::*;
 use crate::channel::ChannelResponse;
 use crate::lnurl::LnUrl;
-use crate::pay::{LnURLPayInvoice, PayResponse, VerifyResponse};
+use crate::pay::{decode_invoice_response, LnURLPayInvoice, PayResponse, VerifyResponse};
 use crate::withdraw::WithdrawalResponse;
-use crate::{Builder, Error};
+use crate::{callback_url, Builder, Error};
 
 #[derive(Debug, Clone)]
 pub struct AsyncClient {
@@ -80,29 +80,20 @@ impl AsyncClient {
             }
         }
 
-        let symbol = if pay.callback.contains('?') { "&" } else { "?" };
-
-        let url = match (zap_request, comment) {
+        let amount = msats.to_string();
+        let mut params = vec![("amount", amount.as_str())];
+        match (&zap_request, comment) {
             (Some(_), Some(_)) => return Err(Error::InvalidComment),
-            (Some(zap_request), None) => format!(
-                "{}{}amount={}&nostr={}",
-                pay.callback, symbol, msats, zap_request
-            ),
-            (None, Some(comment)) => format!(
-                "{}{}amount={}&comment={}",
-                pay.callback, symbol, msats, comment
-            ),
-            (None, None) => format!("{}{}amount={}", pay.callback, symbol, msats),
-        };
+            (Some(zap_request), None) => params.push(("nostr", zap_request.as_str())),
+            (None, Some(comment)) => params.push(("comment", comment)),
+            (None, None) => {}
+        }
+        let url = callback_url(&pay.callback, &params).map_err(|_| Error::InvalidResponse)?;
 
-        let resp = self.client.get(&url).send().await?;
+        let resp = self.client.get(url).send().await?;
 
-        let invoice: LnURLPayInvoice = resp.error_for_status()?.json().await?;
-
-        // verify the returned invoice's amount matches the requested amount (LUD-06)
-        invoice.verify_amount(msats)?;
-
-        Ok(invoice)
+        let json: serde_json::Value = resp.error_for_status()?.json().await?;
+        decode_invoice_response(json, &pay.callback, msats)
     }
 
     pub async fn verify(&self, url: &str) -> Result<VerifyResponse, Error> {
@@ -120,16 +111,11 @@ impl AsyncClient {
         withdrawal: &WithdrawalResponse,
         invoice: &str,
     ) -> Result<Response<()>, Error> {
-        let symbol = if withdrawal.callback.contains('?') {
-            "&"
-        } else {
-            "?"
-        };
-
-        let url = format!(
-            "{}{}k1={}&pr={}",
-            withdrawal.callback, symbol, withdrawal.k1, invoice
-        );
+        let url = callback_url(
+            &withdrawal.callback,
+            &[("k1", withdrawal.k1.as_str()), ("pr", invoice)],
+        )
+        .map_err(|_| Error::InvalidResponse)?;
         let resp = self.client.get(url).send().await?;
 
         Ok(resp.error_for_status()?.json().await?)
@@ -141,20 +127,17 @@ impl AsyncClient {
         node_pubkey: PublicKey,
         private: bool,
     ) -> Result<Response<()>, Error> {
-        let symbol = if channel.callback.contains('?') {
-            "&"
-        } else {
-            "?"
-        };
-
-        let url = format!(
-            "{}{}k1={}&remoteid={}&private={}",
-            channel.callback,
-            symbol,
-            channel.k1,
-            node_pubkey,
-            private as i32 // 0 or 1
-        );
+        let remote_id = node_pubkey.to_string();
+        let private = if private { "1" } else { "0" };
+        let url = callback_url(
+            &channel.callback,
+            &[
+                ("k1", channel.k1.as_str()),
+                ("remoteid", remote_id.as_str()),
+                ("private", private),
+            ],
+        )
+        .map_err(|_| Error::InvalidResponse)?;
 
         let resp = self.client.get(url).send().await?;
 
@@ -167,7 +150,10 @@ impl AsyncClient {
         sig: Signature,
         key: PublicKey,
     ) -> Result<Response<()>, Error> {
-        let url = format!("{}&sig={}&key={}", lnurl.url, sig, key);
+        let sig = sig.to_string();
+        let key = key.to_string();
+        let url = callback_url(&lnurl.url, &[("sig", sig.as_str()), ("key", key.as_str())])
+            .map_err(|_| Error::InvalidLnUrl)?;
 
         let resp = self.client.get(url).send().await?;
 

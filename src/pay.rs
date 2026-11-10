@@ -51,8 +51,10 @@ pub struct PayResponse {
 }
 
 impl PayResponse {
-    pub fn metadata_json(&self) -> serde_json::Value {
-        serde_json::from_str(&self.metadata).unwrap()
+    /// Parse `metadata`, which comes from the service and may not be valid
+    /// JSON.
+    pub fn metadata_json(&self) -> Result<serde_json::Value, Error> {
+        Ok(serde_json::from_str(&self.metadata)?)
     }
 
     pub fn metadata_hash(&self) -> [u8; 32] {
@@ -121,6 +123,50 @@ impl LnURLPayInvoice {
 
         Ok(())
     }
+
+    /// Verify that the success action's URL, if any, is on the same domain as
+    /// `callback`, as LUD-09 requires. This stops a service from sending the
+    /// user to another site after the payment.
+    ///
+    /// Returns [`Error::InvalidSuccessAction`] if the URL has no host or a
+    /// different host, and [`Error::InvalidResponse`] if `callback` is not a
+    /// valid URL.
+    pub fn verify_success_action(&self, callback: &str) -> Result<(), Error> {
+        let url = match self.success_action.as_ref().and_then(|p| p.url.as_ref()) {
+            Some(url) => url,
+            None => return Ok(()),
+        };
+
+        let callback = Url::parse(callback).map_err(|_| Error::InvalidResponse)?;
+        if url.host().is_none() || url.host() != callback.host() {
+            return Err(Error::InvalidSuccessAction);
+        }
+
+        Ok(())
+    }
+}
+
+/// Decode the service's reply to a pay callback and check the invoice before it
+/// is returned to the wallet. A `{"status":"ERROR"}` reply becomes
+/// [`Error::Other`] with the service's reason.
+#[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+pub(crate) fn decode_invoice_response(
+    json: serde_json::Value,
+    callback: &str,
+    msats: u64,
+) -> Result<LnURLPayInvoice, Error> {
+    use crate::Response;
+
+    if let Ok(Response::Error { reason }) = serde_json::from_value::<Response<()>>(json.clone()) {
+        return Err(Error::Other(reason));
+    }
+
+    let invoice: LnURLPayInvoice = serde_json::from_value(json)?;
+    // verify the returned invoice's amount matches the requested amount (LUD-06)
+    invoice.verify_amount(msats)?;
+    invoice.verify_success_action(callback)?;
+
+    Ok(invoice)
 }
 
 /// Parse the amount (in millisatoshis) encoded in a BOLT11 invoice without
@@ -343,6 +389,15 @@ mod test {
     use crate::Response;
 
     #[test]
+    fn test_metadata_json_invalid() {
+        let pay: PayResponse = serde_json::from_str(
+            r#"{"callback":"https://a.com/cb","maxSendable":1000,"minSendable":1,"tag":"payRequest","metadata":"not json"}"#,
+        )
+        .unwrap();
+        assert!(matches!(pay.metadata_json(), Err(Error::Json(_))));
+    }
+
+    #[test]
     fn test_encrypt_decrypt() {
         let description = "test_description".to_string();
         let text = "hello world".to_string();
@@ -352,6 +407,115 @@ mod test {
 
         let decrypted = params.decrypt(&preimage).unwrap();
         assert_eq!(decrypted, text);
+    }
+
+    const CALLBACK: &str = "https://pay.example.com/lnurlp/callback?id=1";
+
+    fn invoice_with_success_url(url: &str) -> LnURLPayInvoice {
+        let mut invoice = LnURLPayInvoice::new(INV_250_000_000_MSAT.to_string());
+        invoice.success_action = Some(SuccessActionParams {
+            tag: "url".to_string(),
+            message: None,
+            url: Some(Url::parse(url).unwrap()),
+            description: Some("order details".to_string()),
+            ciphertext: None,
+            iv: None,
+        });
+        invoice
+    }
+
+    #[test]
+    fn test_success_action_same_domain() {
+        for url in [
+            "https://pay.example.com/order/1",
+            "https://PAY.EXAMPLE.COM/order/1",
+            "http://pay.example.com:8080/order/1",
+        ] {
+            let invoice = invoice_with_success_url(url);
+            assert!(invoice.verify_success_action(CALLBACK).is_ok(), "{}", url);
+        }
+
+        let invoice = LnURLPayInvoice::new(INV_250_000_000_MSAT.to_string());
+        assert!(invoice.verify_success_action(CALLBACK).is_ok());
+    }
+
+    #[test]
+    fn test_success_action_other_domain() {
+        for url in [
+            "https://evil.com/order/1",
+            "https://example.com/order/1",
+            "https://pay.example.com.evil.com/order/1",
+            "https://evil.com/?https://pay.example.com",
+            "javascript:alert(1)",
+            "data:text/html,pay.example.com",
+        ] {
+            let invoice = invoice_with_success_url(url);
+            assert!(
+                matches!(
+                    invoice.verify_success_action(CALLBACK),
+                    Err(Error::InvalidSuccessAction)
+                ),
+                "{}",
+                url
+            );
+        }
+    }
+
+    #[test]
+    fn test_success_action_url_checked_for_unknown_tag() {
+        let mut invoice = invoice_with_success_url("https://evil.com/order/1");
+        invoice.success_action.as_mut().unwrap().tag = "future".to_string();
+        assert!(matches!(
+            invoice.verify_success_action(CALLBACK),
+            Err(Error::InvalidSuccessAction)
+        ));
+    }
+
+    #[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+    #[test]
+    fn test_decode_invoice_response_success_action() {
+        let json = serde_json::json!({
+            "pr": INV_250_000_000_MSAT,
+            "successAction": { "tag": "url", "description": "x", "url": "https://evil.com/" },
+        });
+        assert!(matches!(
+            decode_invoice_response(json, CALLBACK, 250_000_000),
+            Err(Error::InvalidSuccessAction)
+        ));
+    }
+
+    #[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+    #[test]
+    fn test_decode_invoice_response() {
+        let json = serde_json::json!({ "pr": INV_250_000_000_MSAT, "routes": [] });
+        let invoice = decode_invoice_response(json.clone(), CALLBACK, 250_000_000).unwrap();
+        assert_eq!(invoice.invoice(), INV_250_000_000_MSAT);
+
+        assert!(matches!(
+            decode_invoice_response(json, CALLBACK, 1_000),
+            Err(Error::InvoiceAmountMismatch { .. })
+        ));
+    }
+
+    #[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+    #[test]
+    fn test_decode_invoice_response_error() {
+        let json = serde_json::json!({ "status": "ERROR", "reason": "amount too low" });
+        match decode_invoice_response(json, CALLBACK, 1_000) {
+            Err(Error::Other(reason)) => assert_eq!(reason, "amount too low"),
+            other => panic!("expected service error, got {:?}", other),
+        }
+    }
+
+    #[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+    #[test]
+    fn test_decode_invoice_response_missing_invoice() {
+        // used to hit `unreachable!` in the blocking client
+        let json = serde_json::json!({ "status": "OK" });
+        assert!(matches!(
+            decode_invoice_response(json, CALLBACK, 1_000),
+            Err(Error::Json(_))
+        ));
     }
 
     #[test]

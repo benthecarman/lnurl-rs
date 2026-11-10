@@ -9,9 +9,11 @@ use ureq::{Agent, Proxy};
 
 use crate::channel::ChannelResponse;
 use crate::lnurl::LnUrl;
-use crate::pay::{LnURLPayInvoice, PayResponse};
+use crate::pay::{decode_invoice_response, LnURLPayInvoice, PayResponse};
 use crate::withdraw::WithdrawalResponse;
-use crate::{decode_ln_url_response_from_json, Builder, Error, LnUrlResponse, Response};
+use crate::{
+    callback_url, decode_ln_url_response_from_json, Builder, Error, LnUrlResponse, Response,
+};
 
 #[derive(Debug, Clone)]
 pub struct BlockingClient {
@@ -28,7 +30,7 @@ impl BlockingClient {
         }
 
         if let Some(proxy) = &builder.proxy {
-            agent_builder = agent_builder.proxy(Proxy::new(proxy).unwrap());
+            agent_builder = agent_builder.proxy(Proxy::new(proxy).map_err(Error::Ureq)?);
         }
 
         Ok(Self::from_agent(agent_builder.build()))
@@ -73,42 +75,22 @@ impl BlockingClient {
             }
         }
 
-        let symbol = if pay.callback.contains('?') { "&" } else { "?" };
-
-        let url = match (zap_request, comment) {
+        let amount = msats.to_string();
+        let mut params = vec![("amount", amount.as_str())];
+        match (&zap_request, comment) {
             (Some(_), Some(_)) => return Err(Error::InvalidComment),
-            (Some(zap_request), None) => format!(
-                "{}{}amount={}&nostr={}",
-                pay.callback, symbol, msats, zap_request
-            ),
-            (None, Some(comment)) => format!(
-                "{}{}amount={}&comment={}",
-                pay.callback, symbol, msats, comment
-            ),
-            (None, None) => format!("{}{}amount={}", pay.callback, symbol, msats),
-        };
+            (Some(zap_request), None) => params.push(("nostr", zap_request.as_str())),
+            (None, Some(comment)) => params.push(("comment", comment)),
+            (None, None) => {}
+        }
+        let url = callback_url(&pay.callback, &params).map_err(|_| Error::InvalidResponse)?;
 
-        let resp = self.agent.get(&url).call();
+        let resp = self.agent.get(url.as_str()).call();
 
         match resp {
             Ok(resp) => {
                 let json: serde_json::Value = resp.into_json()?;
-                let result = serde_json::from_value::<LnURLPayInvoice>(json.clone());
-
-                match result {
-                    Ok(invoice) => {
-                        // verify the returned invoice's amount matches the requested amount (LUD-06)
-                        invoice.verify_amount(msats)?;
-                        Ok(invoice)
-                    }
-                    Err(_) => {
-                        let response = serde_json::from_value::<Response<()>>(json)?;
-                        match response {
-                            Response::Error { reason } => Err(Error::Other(reason)),
-                            Response::Ok { .. } => unreachable!("Ok response should be an invoice"),
-                        }
-                    }
-                }
+                decode_invoice_response(json, &pay.callback, msats)
             }
             Err(ureq::Error::Status(code, _)) => Err(Error::HttpResponse(code)),
             Err(e) => Err(Error::Ureq(e)),
@@ -120,18 +102,13 @@ impl BlockingClient {
         withdrawal: &WithdrawalResponse,
         invoice: &str,
     ) -> Result<Response<()>, Error> {
-        let symbol = if withdrawal.callback.contains('?') {
-            "&"
-        } else {
-            "?"
-        };
+        let url = callback_url(
+            &withdrawal.callback,
+            &[("k1", withdrawal.k1.as_str()), ("pr", invoice)],
+        )
+        .map_err(|_| Error::InvalidResponse)?;
 
-        let url = format!(
-            "{}{}k1={}&pr={}",
-            withdrawal.callback, symbol, withdrawal.k1, invoice
-        );
-
-        let resp = self.agent.get(&url).call();
+        let resp = self.agent.get(url.as_str()).call();
 
         match resp {
             Ok(resp) => Ok(resp.into_json()?),
@@ -146,22 +123,19 @@ impl BlockingClient {
         node_pubkey: PublicKey,
         private: bool,
     ) -> Result<Response<()>, Error> {
-        let symbol = if channel.callback.contains('?') {
-            "&"
-        } else {
-            "?"
-        };
+        let remote_id = node_pubkey.to_string();
+        let private = if private { "1" } else { "0" };
+        let url = callback_url(
+            &channel.callback,
+            &[
+                ("k1", channel.k1.as_str()),
+                ("remoteid", remote_id.as_str()),
+                ("private", private),
+            ],
+        )
+        .map_err(|_| Error::InvalidResponse)?;
 
-        let url = format!(
-            "{}{}k1={}&remoteid={}&private={}",
-            channel.callback,
-            symbol,
-            channel.k1,
-            node_pubkey,
-            private as i32 // 0 or 1
-        );
-
-        let resp = self.agent.get(&url).call();
+        let resp = self.agent.get(url.as_str()).call();
 
         match resp {
             Ok(resp) => Ok(resp.into_json()?),
@@ -176,9 +150,12 @@ impl BlockingClient {
         sig: Signature,
         key: PublicKey,
     ) -> Result<Response<()>, Error> {
-        let url = format!("{}&sig={}&key={}", lnurl.url, sig, key);
+        let sig = sig.to_string();
+        let key = key.to_string();
+        let url = callback_url(&lnurl.url, &[("sig", sig.as_str()), ("key", key.as_str())])
+            .map_err(|_| Error::InvalidLnUrl)?;
 
-        let resp = self.agent.get(&url).call();
+        let resp = self.agent.get(url.as_str()).call();
 
         match resp {
             Ok(resp) => Ok(resp.into_json()?),
