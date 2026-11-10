@@ -8,7 +8,7 @@ use reqwest::Client;
 use crate::api::*;
 use crate::channel::ChannelResponse;
 use crate::lnurl::LnUrl;
-use crate::pay::{LnURLPayInvoice, PayResponse, VerifyResponse};
+use crate::pay::{decode_invoice_response, LnURLPayInvoice, PayResponse, VerifyResponse};
 use crate::withdraw::WithdrawalResponse;
 use crate::{callback_url, Builder, Error};
 
@@ -92,12 +92,8 @@ impl AsyncClient {
 
         let resp = self.client.get(url).send().await?;
 
-        let invoice: LnURLPayInvoice = resp.error_for_status()?.json().await?;
-
-        // verify the returned invoice's amount matches the requested amount (LUD-06)
-        invoice.verify_amount(msats)?;
-
-        Ok(invoice)
+        let json: serde_json::Value = resp.error_for_status()?.json().await?;
+        decode_invoice_response(json, msats)
     }
 
     pub async fn verify(&self, url: &str) -> Result<VerifyResponse, Error> {

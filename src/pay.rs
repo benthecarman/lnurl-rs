@@ -125,6 +125,27 @@ impl LnURLPayInvoice {
     }
 }
 
+/// Decode the service's reply to a pay callback and check the invoice before it
+/// is returned to the wallet. A `{"status":"ERROR"}` reply becomes
+/// [`Error::Other`] with the service's reason.
+#[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+pub(crate) fn decode_invoice_response(
+    json: serde_json::Value,
+    msats: u64,
+) -> Result<LnURLPayInvoice, Error> {
+    use crate::Response;
+
+    if let Ok(Response::Error { reason }) = serde_json::from_value::<Response<()>>(json.clone()) {
+        return Err(Error::Other(reason));
+    }
+
+    let invoice: LnURLPayInvoice = serde_json::from_value(json)?;
+    // verify the returned invoice's amount matches the requested amount (LUD-06)
+    invoice.verify_amount(msats)?;
+
+    Ok(invoice)
+}
+
 /// Parse the amount (in millisatoshis) encoded in a BOLT11 invoice without
 /// pulling in a full invoice-parsing dependency.
 ///
@@ -363,6 +384,40 @@ mod test {
 
         let decrypted = params.decrypt(&preimage).unwrap();
         assert_eq!(decrypted, text);
+    }
+
+    #[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+    #[test]
+    fn test_decode_invoice_response() {
+        let json = serde_json::json!({ "pr": INV_250_000_000_MSAT, "routes": [] });
+        let invoice = decode_invoice_response(json.clone(), 250_000_000).unwrap();
+        assert_eq!(invoice.invoice(), INV_250_000_000_MSAT);
+
+        assert!(matches!(
+            decode_invoice_response(json, 1_000),
+            Err(Error::InvoiceAmountMismatch { .. })
+        ));
+    }
+
+    #[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+    #[test]
+    fn test_decode_invoice_response_error() {
+        let json = serde_json::json!({ "status": "ERROR", "reason": "amount too low" });
+        match decode_invoice_response(json, 1_000) {
+            Err(Error::Other(reason)) => assert_eq!(reason, "amount too low"),
+            other => panic!("expected service error, got {:?}", other),
+        }
+    }
+
+    #[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
+    #[test]
+    fn test_decode_invoice_response_missing_invoice() {
+        // used to hit `unreachable!` in the blocking client
+        let json = serde_json::json!({ "status": "OK" });
+        assert!(matches!(
+            decode_invoice_response(json, 1_000),
+            Err(Error::Json(_))
+        ));
     }
 
     #[test]

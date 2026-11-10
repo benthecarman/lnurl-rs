@@ -9,7 +9,7 @@ use ureq::{Agent, Proxy};
 
 use crate::channel::ChannelResponse;
 use crate::lnurl::LnUrl;
-use crate::pay::{LnURLPayInvoice, PayResponse};
+use crate::pay::{decode_invoice_response, LnURLPayInvoice, PayResponse};
 use crate::withdraw::WithdrawalResponse;
 use crate::{
     callback_url, decode_ln_url_response_from_json, Builder, Error, LnUrlResponse, Response,
@@ -90,22 +90,7 @@ impl BlockingClient {
         match resp {
             Ok(resp) => {
                 let json: serde_json::Value = resp.into_json()?;
-                let result = serde_json::from_value::<LnURLPayInvoice>(json.clone());
-
-                match result {
-                    Ok(invoice) => {
-                        // verify the returned invoice's amount matches the requested amount (LUD-06)
-                        invoice.verify_amount(msats)?;
-                        Ok(invoice)
-                    }
-                    Err(_) => {
-                        let response = serde_json::from_value::<Response<()>>(json)?;
-                        match response {
-                            Response::Error { reason } => Err(Error::Other(reason)),
-                            Response::Ok { .. } => unreachable!("Ok response should be an invoice"),
-                        }
-                    }
-                }
+                decode_invoice_response(json, msats)
             }
             Err(ureq::Error::Status(code, _)) => Err(Error::HttpResponse(code)),
             Err(e) => Err(Error::Ureq(e)),
