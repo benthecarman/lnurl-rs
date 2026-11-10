@@ -140,6 +140,18 @@ pub(crate) fn callback_url(
 
 impl std::error::Error for Error {}
 
+#[cfg(feature = "blocking")]
+#[cfg(test)]
+mod builder_tests {
+    use super::{Builder, Error};
+
+    #[test]
+    fn test_invalid_proxy_is_an_error() {
+        let result = Builder::default().proxy("ftp://x:1").build_blocking();
+        assert!(matches!(result, Err(Error::Ureq(_))));
+    }
+}
+
 #[cfg(any(feature = "blocking", feature = "async", feature = "async-https"))]
 #[cfg(test)]
 mod callback_url_tests {

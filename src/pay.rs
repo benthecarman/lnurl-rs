@@ -51,8 +51,10 @@ pub struct PayResponse {
 }
 
 impl PayResponse {
-    pub fn metadata_json(&self) -> serde_json::Value {
-        serde_json::from_str(&self.metadata).unwrap()
+    /// Parse `metadata`, which comes from the service and may not be valid
+    /// JSON.
+    pub fn metadata_json(&self) -> Result<serde_json::Value, Error> {
+        Ok(serde_json::from_str(&self.metadata)?)
     }
 
     pub fn metadata_hash(&self) -> [u8; 32] {
@@ -341,6 +343,15 @@ impl SuccessAction {
 mod test {
     use super::*;
     use crate::Response;
+
+    #[test]
+    fn test_metadata_json_invalid() {
+        let pay: PayResponse = serde_json::from_str(
+            r#"{"callback":"https://a.com/cb","maxSendable":1000,"minSendable":1,"tag":"payRequest","metadata":"not json"}"#,
+        )
+        .unwrap();
+        assert!(matches!(pay.metadata_json(), Err(Error::Json(_))));
+    }
 
     #[test]
     fn test_encrypt_decrypt() {

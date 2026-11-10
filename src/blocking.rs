@@ -30,7 +30,7 @@ impl BlockingClient {
         }
 
         if let Some(proxy) = &builder.proxy {
-            agent_builder = agent_builder.proxy(Proxy::new(proxy).unwrap());
+            agent_builder = agent_builder.proxy(Proxy::new(proxy).map_err(Error::Ureq)?);
         }
 
         Ok(Self::from_agent(agent_builder.build()))
